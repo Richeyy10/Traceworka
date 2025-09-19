@@ -22,8 +22,15 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
+// Helper type for dynamic route context to satisfy the TypeScript compiler
+type Context = {
+    params: {
+        id: string;
+    };
+};
+
 // Handles PATCH requests (for updates like status)
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, context: Context) {
     try {
         const session = await getServerSession(options);
         const userRole = session?.user?.role;
@@ -33,7 +40,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
             return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id } = params; // This line is now safe
+        const { id } = context.params;
         const body = await request.json();
 
         const docRef = db.collection('requisitions').doc(id);
@@ -103,7 +110,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // Handles DELETE requests
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, context: Context) {
     try {
         const session = await getServerSession(options);
         const userRole = session?.user?.role;
@@ -113,7 +120,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
             return NextResponse.json({ message: 'Forbidden. You do not have permission to delete requisitions.' }, { status: 403 });
         }
 
-        const { id } = params;
+        const { id } = context.params;
 
         if (!id) {
             return NextResponse.json({ message: 'Requisition ID is required.' }, { status: 400 });
