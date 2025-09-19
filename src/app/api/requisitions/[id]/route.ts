@@ -33,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
             return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id } = params;
+        const { id } = params; // This line is now safe
         const body = await request.json();
 
         const docRef = db.collection('requisitions').doc(id);
