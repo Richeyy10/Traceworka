@@ -1,7 +1,6 @@
 'use client';
 
 import useSWR from 'swr';
-import Link from 'next/link';
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) {
@@ -50,39 +49,39 @@ export default function RequisitionsTable() {
   return (
     <div className="mt-8">
       <h2 className="text-2xl font-semibold mb-4 text-gray-800">All Requisitions</h2>
-      <div className="bg-white shadow overflow-auto sm:rounded-lg">
+      <div className="bg-white shadow mobile-scroll sm:rounded-lg">
         {requisitions && requisitions.length > 0 ? (
-          <table className="min-w-full w- divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Item Name
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Quantity
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Unit Cost
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total Cost
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Reason
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Requester
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Department
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Employee ID
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th scope="col" className="relative px-6 py-3">
+                <th scope="col" className="relative px-3 py-3">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
@@ -90,15 +89,15 @@ export default function RequisitionsTable() {
             <tbody className="bg-white divide-y divide-gray-200 text-black">
               {requisitions.map((req) => (
                 <tr key={req.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{req.itemName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{req.quantity}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">#{req.unitCost}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">#{(req.quantity * req.unitCost).toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{req.reason}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{req.requesterName}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{req.department}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{req.employeeId}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">{req.itemName}</td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">{req.quantity}</td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">#{req.unitCost}</td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">#{(req.quantity * req.unitCost).toFixed(2)}</td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">{req.reason}</td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">{req.requesterName}</td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">{req.department}</td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">{req.employeeId}</td>
+                  <td className="px-3 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       req.status === 'Approved' ? 'bg-green-100 text-green-800' :
                       req.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
@@ -106,7 +105,7 @@ export default function RequisitionsTable() {
                       {req.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
                     {req.status === 'Pending' && (
                       <>
                         <button

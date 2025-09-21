@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { Resend } from 'resend';
 import crypto from 'crypto';

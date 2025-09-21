@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs');
+import bcrypt from 'bcryptjs';
 
 // The password you are typing in the login form
 const plainTextPassword = 'password'; 

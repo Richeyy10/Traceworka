@@ -23,7 +23,7 @@ if (!getApps().length) {
 const db = getFirestore();
 
 // Handles GET requests
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(options);
     const userEmail = session?.user?.email;

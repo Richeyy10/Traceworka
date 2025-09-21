@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs');
+import bcrypt from 'bcryptjs';
 
 const plainTextPassword = 'password';
 const saltRounds = 10;

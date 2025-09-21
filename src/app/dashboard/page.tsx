@@ -1,5 +1,4 @@
 import { getServerSession } from 'next-auth';
-import { signOut } from 'next-auth/react';
 import { options } from '../api/auth/[...nextauth]/options';
 import { redirect } from 'next/navigation';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';

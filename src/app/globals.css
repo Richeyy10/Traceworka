@@ -26,3 +26,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Subtle mobile improvements */
+@layer utilities {
+  .responsive-padding {
+    @apply px-6 sm:px-8;
+  }
+  
+  .mobile-scroll {
+    @apply overflow-x-auto;
+  }
+}

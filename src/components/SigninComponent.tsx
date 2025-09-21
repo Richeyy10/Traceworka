@@ -5,8 +5,11 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import InputField from './ui/inputfield';
+interface SigninComponentProps {
+  providers: unknown; // Simplified to avoid complex type issues
+}
 
-export default function SigninComponent() {
+export default function SigninComponent({ providers: _providers }: SigninComponentProps) {
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',

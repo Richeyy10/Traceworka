@@ -1,4 +1,3 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
 export { default } from "next-auth/middleware";
 
 export const config = {

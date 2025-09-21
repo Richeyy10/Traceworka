@@ -40,13 +40,6 @@ export default function RequisitionForm({ requesterName }: RequisitionFormProps)
     }));
   };
 
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
-  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -99,8 +92,8 @@ export default function RequisitionForm({ requesterName }: RequisitionFormProps)
   const totalCost = formData.quantity * formData.unitCost;
 
   return (
-    <div className="flex justify-center p-8 bg-gray-100 min-h-screen">
-      <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-lg">
+    <div className="flex justify-center p-4 sm:p-8 bg-gray-100 min-h-screen">
+      <div className="w-full max-w-2xl bg-white p-6 sm:p-8 rounded-lg shadow-lg">
         <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">
           Requisition Form
         </h1>
@@ -206,10 +199,10 @@ export default function RequisitionForm({ requesterName }: RequisitionFormProps)
             </select>
           </div>
 
-          <div className='w-[30%] mx-auto'>
+          <div className='w-full sm:w-[30%] sm:mx-auto'>
             <button
               type="submit"
-              className="py-2 px-4 border border-transparent rounded-2xl shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+              className="w-full py-2 px-4 border border-transparent rounded-2xl shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
             >
               Submit Requisition
             </button>

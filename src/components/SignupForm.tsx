@@ -48,6 +48,7 @@ export default function SignupForm() {
         setError(data.message || 'Registration failed.');
       }
     } catch (err) {
+      console.error('Signup error:', err);
       setError('An error occurred. Please try again.');
     }
   };

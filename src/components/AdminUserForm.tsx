@@ -2,10 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import InputField from '@/components/ui/inputfield';
-import { useRouter } from 'next/navigation';
-
 export default function AdminUserForm() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -47,6 +44,7 @@ export default function AdminUserForm() {
         setError(data.message || 'Failed to create user.');
       }
     } catch (err) {
+      console.error('Error creating user:', err);
       setError('An error occurred. Please try again.');
     }
   };

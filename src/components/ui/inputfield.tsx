@@ -1,4 +1,4 @@
-import React, { ChangeEvent, InputHTMLAttributes } from 'react';
+import React, { InputHTMLAttributes } from 'react';
 
 // Extend InputHTMLAttributes to correctly type the component
 interface InputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
