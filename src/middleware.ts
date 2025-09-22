@@ -13,6 +13,7 @@ const publicRoutes = [
 
 // Protected routes that require a logged-in user.
 const protectedRoutes = [
+  '/', 
   '/dashboard', 
   '/my-requisitions'
 ];
@@ -33,7 +34,7 @@ export default async function middleware(req: NextRequest) {
   // If the user is authenticated and tries to access a public page,
   // redirect them to the dashboard.
   if (token && isPublicRoute && pathname !== '/dashboard' && pathname !== '/') {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    return NextResponse.redirect(new URL('/', req.url));
   }
 
   return NextResponse.next();
