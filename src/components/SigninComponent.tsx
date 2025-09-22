@@ -14,7 +14,7 @@ export default function SigninComponent({ providers: _providers }: SigninCompone
   const router = useRouter();
   const searchParams = useSearchParams();
   // Get the callbackUrl from the URL or default to the dashboard
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const [formData, setFormData] = useState({
     email: '',
