@@ -47,7 +47,6 @@ export default function SigninComponent({ providers: _providers }: SigninCompone
       if (result?.error) {
         setError('Invalid credentials. Please try again.');
       } else if (result?.ok) {
-        // Redirect to the stored callbackUrl or a default route
         router.push(callbackUrl);
       }
     } catch (err) {
