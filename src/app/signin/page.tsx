@@ -1,11 +1,29 @@
-import { getProviders } from "next-auth/react";
+'use client';
+
+import SigninComponent from '@/components/SigninComponent';
 import { Suspense } from 'react';
-import SigninComponent from "@/components/SigninComponent";
-export default async function SignInPage() {
-  const providers = await getProviders();
-  return(
-    <Suspense fallback={<div>Loading...</div>}>
-      <SigninComponent providers={providers} />;
+import { getProviders } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { ClientSafeProvider } from 'next-auth/react';
+
+function SigninWrapper() {
+  const [providers, setProviders] = useState<Record<string, ClientSafeProvider> | null>(null);
+  
+  useEffect(() => {
+    const fetchProviders = async () => {
+      const providers = await getProviders();
+      setProviders(providers);
+    };
+    fetchProviders();
+  }, []);
+
+  return <SigninComponent providers={providers} />;
+}
+
+export default function SigninPage() {
+  return (
+    <Suspense fallback={<div>Loading providers...</div>}>
+      <SigninWrapper />
     </Suspense>
   );
 }
