@@ -39,22 +39,23 @@ export default function Home() {
     );
   }
 
-  // return (
-  //   <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 p-4">
-  //     <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-md">
-  //       <h1 className="text-3xl font-bold text-gray-800 mb-6">
-  //         Welcome to the Requisition App
-  //       </h1>
-  //       <p className="text-gray-600 mb-8">
-  //         Please sign in to access and fill out the requisition form.
-  //       </p>
-  //       <button
-  //         onClick={() => signIn()}
-  //         className="py-2 px-6 rounded-lg shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-  //       >
-  //         Sign In
-  //       </button>
-  //     </div>
-  //   </div>
-  // );
+  else {
+    return (
+    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 p-4">
+      <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-md">
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">
+          Welcome to the Requisition App
+        </h1>
+        <p className="text-gray-600 mb-8">
+          Please sign in to access and fill out the requisition form.
+        </p>
+        <button
+          onClick={() => signIn()}
+          className="py-2 px-6 rounded-lg shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
+          Sign In
+        </button>
+      </div>
+    </div>
+  );
 }
