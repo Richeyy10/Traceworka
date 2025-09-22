@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { signIn, ClientSafeProvider } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import InputField from './ui/inputfield';
 
@@ -12,8 +12,6 @@ interface SigninComponentProps {
 
 export default function SigninComponent({ providers }: SigninComponentProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const [formData, setFormData] = useState({
     email: '',
@@ -46,7 +44,8 @@ export default function SigninComponent({ providers }: SigninComponentProps) {
       if (result?.error) {
         setError('Invalid credentials. Please try again.');
       } else if (result?.ok) {
-        router.push(callbackUrl);
+        // Corrected logic: Force a direct redirect to the home page.
+        router.push('/');
       }
     } catch (err) {
       console.error('Sign-in failed:', err);
@@ -97,7 +96,7 @@ export default function SigninComponent({ providers }: SigninComponentProps) {
         {providers && Object.values(providers).filter(provider => provider.id !== 'credentials').map(provider => (
           <div key={provider.name} className="mt-4">
             <button
-              onClick={() => signIn(provider.id, { callbackUrl })}
+              onClick={() => signIn(provider.id, { callbackUrl: '/' })}
               className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Sign in with {provider.name}
