@@ -1,12 +1,23 @@
 'use client';
 
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useSession, signOut, getProviders } from 'next-auth/react';
 import RequisitionForm from '@/components/requisitionform';
 import SigninComponent from '@/components/SigninComponent';
 import Link from 'next/link';
+import { useState, useEffect, Suspense } from 'react';
+import { ClientSafeProvider } from 'next-auth/react';
 
-export default function Home() {
+function RenderComponent() {
   const { data: session, status } = useSession();
+  const [providers, setProviders] = useState<Record<string, ClientSafeProvider> | null>(null);
+  
+  useEffect(() => {
+    const fetchProviders = async () => {
+      const providers = await getProviders();
+      setProviders(providers);
+    };
+    fetchProviders();
+  }, []);
 
   if (status === 'loading') {
     return (
@@ -40,7 +51,15 @@ export default function Home() {
     );
   } else {
     return (
-      <SigninComponent providers={undefined} />
+      <SigninComponent providers={providers} />
     );
   }
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <RenderComponent />
+    </Suspense>
+  );
 }
