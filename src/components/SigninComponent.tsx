@@ -7,13 +7,12 @@ import Link from 'next/link';
 import InputField from './ui/inputfield';
 
 interface SigninComponentProps {
-  providers: unknown; // Simplified to avoid complex type issues
+  providers: Record<string, any> | undefined;
 }
 
-export default function SigninComponent({ providers: _providers }: SigninComponentProps) {
+export default function SigninComponent({ providers }: SigninComponentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Get the callbackUrl from the URL or default to the dashboard
   const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const [formData, setFormData] = useState({
@@ -95,6 +94,16 @@ export default function SigninComponent({ providers: _providers }: SigninCompone
             </button>
           </div>
         </form>
+        {providers && Object.values(providers).filter(provider => provider.id !== 'credentials').map(provider => (
+          <div key={provider.name} className="mt-4">
+            <button
+              onClick={() => signIn(provider.id, { callbackUrl })}
+              className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Sign in with {provider.name}
+            </button>
+          </div>
+        ))}
         <div className="text-center mt-4">
           <p className="text-gray-600">
             Don&apos;t have an account?{' '}
