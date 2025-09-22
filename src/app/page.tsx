@@ -39,7 +39,6 @@ export default function Home() {
       </div>
     );
   } else {
-    // If the user is unauthenticated, show the sign-in component directly.
     return (
       <SigninComponent providers={undefined} />
     );
