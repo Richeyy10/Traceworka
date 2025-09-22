@@ -1,23 +1,11 @@
 'use client';
 
-import { useSession, signOut, getProviders } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import RequisitionForm from '@/components/requisitionform';
-import SigninComponent from '@/components/SigninComponent';
 import Link from 'next/link';
-import { useState, useEffect, Suspense } from 'react';
-import { ClientSafeProvider } from 'next-auth/react';
 
-function RenderComponent() {
+export default function Home() {
   const { data: session, status } = useSession();
-  const [providers, setProviders] = useState<Record<string, ClientSafeProvider> | null>(null);
-  
-  useEffect(() => {
-    const fetchProviders = async () => {
-      const providers = await getProviders();
-      setProviders(providers);
-    };
-    fetchProviders();
-  }, []);
 
   if (status === 'loading') {
     return (
@@ -27,6 +15,7 @@ function RenderComponent() {
     );
   }
 
+  // This page is now ONLY for authenticated users.
   if (status === 'authenticated') {
     return (
       <div className="flex flex-col min-h-screen">
@@ -49,17 +38,5 @@ function RenderComponent() {
         </main>
       </div>
     );
-  } else {
-    return (
-      <SigninComponent providers={providers} />
-    );
   }
-}
-
-export default function Home() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <RenderComponent />
-    </Suspense>
-  );
 }
