@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import InputField from './ui/inputfield';
 interface SigninComponentProps {
@@ -11,6 +11,8 @@ interface SigninComponentProps {
 
 export default function SigninComponent({ providers: _providers }: SigninComponentProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -37,9 +39,16 @@ export default function SigninComponent({ providers: _providers }: SigninCompone
     });
 
     if (result?.error) {
-      setError('Invalid credentials. Please try again.');
-    } else {
-      router.push('/');
+        setError('Invalid credentials. Please try again.');
+      } else if (result?.ok) {
+        // Redirect to the stored callbackUrl or a default route
+        router.push(callbackUrl);
+      }
+    } catch (err) {
+      console.error('Sign-in failed:', err);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
   
