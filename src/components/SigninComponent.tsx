@@ -36,18 +36,12 @@ export default function SigninComponent({ providers }: SigninComponentProps) {
 
     try {
       const result = await signIn('credentials', {
-        redirect: false,
+        redirect: true, // This is the fix. The app now handles the redirect correctly.
         email: formData.email,
         password: formData.password,
+        callbackUrl: '/',
       });
 
-      if (result?.error) {
-        setError('Invalid credentials. Please try again.');
-      } else if (result?.ok) {
-        // This is the fix. We are not redirecting, we are refreshing the page
-        // to force a re-render with the new session state.
-        router.refresh();
-      }
     } catch (err) {
       console.error('Sign-in failed:', err);
       setError('An unexpected error occurred. Please try again.');
