@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import InputField from './ui/inputfield';
+
 interface SigninComponentProps {
   providers: unknown; // Simplified to avoid complex type issues
 }
@@ -12,13 +13,16 @@ interface SigninComponentProps {
 export default function SigninComponent({ providers: _providers }: SigninComponentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Get the callbackUrl from the URL or default to the dashboard
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
 
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -30,15 +34,17 @@ export default function SigninComponent({ providers: _providers }: SigninCompone
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError('');
+    setIsLoading(true);
+    setError(null);
 
-    const result = await signIn('credentials', {
-      redirect: false,
-      email: formData.email,
-      password: formData.password,
-    });
+    try {
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: formData.email,
+        password: formData.password,
+      });
 
-    if (result?.error) {
+      if (result?.error) {
         setError('Invalid credentials. Please try again.');
       } else if (result?.ok) {
         // Redirect to the stored callbackUrl or a default route
@@ -83,9 +89,10 @@ export default function SigninComponent({ providers: _providers }: SigninCompone
           <div>
             <button
               type="submit"
-              className="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={isLoading}
+              className="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              Sign In
+              {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
           </div>
         </form>
