@@ -22,7 +22,7 @@ export default async function middleware(req: NextRequest) {
   // const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
   if (!token && isProtectedRoute) {
-    return NextResponse.redirect(new URL('/sign-in', req.url));
+    return NextResponse.redirect(new URL('/signin', req.url));
   }
 
   return NextResponse.next();
