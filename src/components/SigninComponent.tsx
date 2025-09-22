@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, FormEvent } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, ClientSafeProvider } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import InputField from './ui/inputfield';
 
 interface SigninComponentProps {
-  providers: Record<string, any> | undefined;
+  providers: Record<string, ClientSafeProvider> | undefined;
 }
 
 export default function SigninComponent({ providers }: SigninComponentProps) {
