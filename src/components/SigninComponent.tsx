@@ -7,7 +7,7 @@ import Link from 'next/link';
 import InputField from './ui/inputfield';
 
 interface SigninComponentProps {
-  providers: Record<string, ClientSafeProvider> | undefined;
+  providers: Record<string, ClientSafeProvider> | null;
 }
 
 export default function SigninComponent({ providers }: SigninComponentProps) {
