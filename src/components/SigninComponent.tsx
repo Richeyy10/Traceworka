@@ -44,8 +44,9 @@ export default function SigninComponent({ providers }: SigninComponentProps) {
       if (result?.error) {
         setError('Invalid credentials. Please try again.');
       } else if (result?.ok) {
-        // Corrected logic: Force a direct redirect to the home page.
-        router.push('/');
+        // This is the fix. We are not redirecting, we are refreshing the page
+        // to force a re-render with the new session state.
+        router.refresh();
       }
     } catch (err) {
       console.error('Sign-in failed:', err);
