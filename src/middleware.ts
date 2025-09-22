@@ -4,6 +4,7 @@ import { NextResponse, NextRequest } from "next/server";
 // Public routes that don't require authentication.
 // Includes auth pages and API routes for authentication.
 const publicRoutes = [
+   '/', 
   '/sign-in', 
   '/sign-up', 
   '/forgot-password', 
@@ -12,7 +13,6 @@ const publicRoutes = [
 
 // Protected routes that require a logged-in user.
 const protectedRoutes = [
-  '/', 
   '/dashboard', 
   '/my-requisitions'
 ];
