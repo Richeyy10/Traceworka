@@ -13,7 +13,6 @@ const publicRoutes = [
 
 // Protected routes that require a logged-in user.
 const protectedRoutes = [
-  '/', 
   '/dashboard', 
   '/my-requisitions'
 ];
