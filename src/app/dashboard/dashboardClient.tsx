@@ -19,7 +19,7 @@ const DashboardClient = ({ currentUser }: DashboardClientProps) => {
     const isAdmin = currentUser.role === 'admin';
 
     return (
-        <div className="container mx-auto p-4 sm:p-8 bg-gray-100 min-h-screen">
+        <div className="mx-auto p-4 sm:p-8 bg-gray-100 min-h-screen">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white p-4 shadow-md rounded-lg mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Welcome, {currentUser.name || 'User'}!</h1>
             <button

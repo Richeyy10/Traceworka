@@ -3,6 +3,8 @@
 import { useSession, signOut } from 'next-auth/react';
 import RequisitionForm from '@/components/requisitionform';
 import Link from 'next/link';
+import Image from 'next/image';
+import logo from '@/assets/logowithnobkg.png'
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -20,7 +22,7 @@ export default function Home() {
     return (
       <div className="flex flex-col min-h-screen">
         <header className="flex justify-between flex-row sm:flex-row sm:justify-between sm:items-center bg-white p-4 shadow-md space-y-4 sm:space-y-0">
-          <h1 className="text-xl font-bold text-black">Traceworka</h1>
+          <Image src={logo} alt='Traceworka' width={150} height={150} className='ml-[10%]' />
           <div className="flex items-center space-x-4">
             <Link href="/my-requisitions" className="py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
               My Requisitions

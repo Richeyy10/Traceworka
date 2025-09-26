@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import DashboardClient from './dashboardClient';
+import Image from 'next/image';
+import logo from '@/assets/logowithnobkg.png'
 
 // Initialize Firebase Admin SDK if it hasn't been already
 if (!getApps().length) {
@@ -51,13 +53,18 @@ export default async function DashboardPage() {
 
   // Render the dashboard based on the user's role
   return (
-    <div>
-      <h1 className="text-3xl font-bold p-8">Dashboard</h1>
-      {currentUser?.role === 'admin' ? (
-        <DashboardClient currentUser={currentUser} />
-      ) : (
-        <p className="p-8">Access Denied. You must be an administrator to view this page.</p>
-      )}
-    </div>
+    <>
+      <div className="flex flex-row justify-between sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+        <Image src={logo} alt='Traceworka' width={150} height={150} className='ml-[10%]' />
+        <h1 className="text-3xl font-bold mr-[10%]">Dashboard</h1>
+      </div>
+      <div>
+        {currentUser?.role === 'admin' ? (
+          <DashboardClient currentUser={currentUser} />
+        ) : (
+          <p className="p-8">Access Denied. You must be an administrator to view this page.</p>
+        )}
+      </div>
+    </>
   );
 }

@@ -3,6 +3,8 @@
 import useSWR from 'swr';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
+import Image from 'next/image';
+import logo from '@/assets/logowithnobkg.png'
 
 // Define the fetcher function for SWR
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -73,8 +75,9 @@ export default function MyRequisitionsPage() {
     const myRequisitions = data?.filter(req => req.requesterEmail === session?.user?.email) || [];
 
     return (
-        <div className="container mx-auto p-4 sm:p-8 bg-gray-100 min-h-screen text-black">
+        <div className="mx-auto p-4 sm:p-8 bg-gray-100 min-h-screen text-black">
             <div className="flex flex-row justify-between sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+            <Image src={logo} alt='Traceworka' width={150} height={150} className='ml-[10%]' />
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">My Requisitions</h1>
                 <div className="flex space-x-4">
                     <Link href="/" className="py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
