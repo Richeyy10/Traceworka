@@ -41,7 +41,9 @@ interface RequisitionData {
 }
 
 // Interface to satisfy type checking for updateData
+// FIX: Added the index signature `[key: string]: any;`
 interface RequisitionUpdate {
+    [key: string]: any; // Index signature to satisfy Firestore SDK's generic type requirement for update()
     status: string;
     rejectionReason?: string | FieldValue;
     rejectedBy?: string | FieldValue;
@@ -56,8 +58,6 @@ interface RequisitionUpdate {
     ownerApprovedEmail?: string | FieldValue;
     ownerApprovedDate?: FieldValue;
 }
-
-// FIX: RouteContext interface removed as it was unused and caused a lint warning.
 
 
 // --- Dynamic Reviewer Email Lookup Function ---
@@ -147,7 +147,7 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
 // --- PATCH HANDLER (Updating Status) ---
 export async function PATCH(
     req: NextRequest, 
-    // FIX: ESLint disable comment to allow 'any' as a necessary type workaround
+    // ESLint disable comment to allow 'any' as a necessary type workaround
     // for Next.js App Router dynamic route type compatibility issues on Vercel build.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: any 
