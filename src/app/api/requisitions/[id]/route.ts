@@ -41,8 +41,10 @@ interface RequisitionData {
 }
 
 // Interface to satisfy type checking for updateData
-// FIX: Added the index signature `[key: string]: any;`
 interface RequisitionUpdate {
+    // FIX: ESLint disable comment to allow 'any' as it is required for 
+    // the Firestore SDK's generic type signature for update().
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any; // Index signature to satisfy Firestore SDK's generic type requirement for update()
     status: string;
     rejectionReason?: string | FieldValue;
