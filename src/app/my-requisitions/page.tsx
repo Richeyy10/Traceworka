@@ -386,3 +386,68 @@ export default function MyRequisitionsPage() {
                             })}
                         </tbody>
                     </table>
+                ) : (
+                    <div className="p-6 text-center text-gray-500">
+                        No requisitions found {activeView === 'action' ? "for your review." : "in your submissions."}
+                    </div>
+                )}
+            </div>
+            
+            {/* --- NEW: Pagination Controls (Unchanged) --- */}
+            {myRequisitions.length > 0 && (
+                <div className="flex justify-between items-center mt-4 px-4 py-2 bg-white rounded-lg shadow">
+                    <button
+                        onClick={() => setCurrentPage(prev => prev - 1)}
+                        disabled={!meta.hasPrevPage}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition duration-150 ${!meta.hasPrevPage ? 'text-gray-400 cursor-not-allowed' : 'text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800'}`}
+                    >
+                        &larr; Previous
+                    </button>
+                    
+                    <span className="text-sm text-gray-700">
+                        Page <span className="font-semibold">{meta.currentPage}</span>
+                    </span>
+
+                    <button
+                        onClick={() => setCurrentPage(prev => prev + 1)}
+                        disabled={!meta.hasNextPage}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition duration-150 ${!meta.hasNextPage ? 'text-gray-400 cursor-not-allowed' : 'text-indigo-600 hover:bg-indigo-50 hover:text-indigo-800'}`}
+                    >
+                        Next &rarr;
+                    </button>
+                </div>
+            )}
+            
+            {/* --- Rejection Reason Modal (Unchanged) --- */}
+            {showReasonModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+                        <h2 className="text-xl font-bold mb-4">Reason for Rejection</h2>
+                        <textarea
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            placeholder="Please provide a detailed reason for rejecting this requisition."
+                            rows={4}
+                            className="w-full p-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+                            required
+                        />
+                        <div className="mt-4 flex justify-end space-x-3">
+                            <button
+                                onClick={() => { setShowReasonModal(false); setRejectionReason(''); setSelectedRequisitionId(null); }}
+                                className="py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleRejectSubmit}
+                                className="py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            >
+                                Confirm Rejection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
