@@ -1,11 +1,11 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { options } from '../auth/[...nextauth]/options';
+import { options } from './auth/[...nextauth]/options'; 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, Query, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Query } from 'firebase-admin/firestore';
 import { Resend } from 'resend'; 
 
-// Initialize Firebase Admin SDK if it hasn't been already
+// Initialize Firebase Admin SDK
 if (!getApps().length) {
     try {
         const serviceAccountKey = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
@@ -28,16 +28,32 @@ interface UserSession {
     name: string;
 }
 
+// Data received from the client request body (req.json())
 interface RequisitionData {
     itemName: string;
     quantity: number;
     unitCost: number;
-    reason: string;
-    employeeId: string;
-    // Fields needed for email notification/POST handler:
-    requesterEmail: string;
+    // NOTE: requesterName, requesterEmail, and department should ideally be pulled 
+    // from the session or calculated, but are included here if the client sends them.
     requesterName: string;
+    requesterEmail: string;
     department: string;
+    
+    // Add other fields from your form here
+}
+
+// FIX: New interface for the complete document structure added to Firestore.
+// It extends the data received from the request and adds server-side fields.
+interface NewRequisitionDocument extends RequisitionData {
+    status: string;
+    created: FieldValue;
+    // Initialize audit fields as FieldValue.delete() or undefined if not needed at creation
+    supervisorApprovedBy?: string;
+    supervisorApprovedEmail?: string;
+    supervisorApprovedDate?: FieldValue;
+    ownerApprovedBy?: string;
+    ownerApprovedEmail?: string;
+    ownerApprovedDate?: FieldValue;
 }
 
 // --- Dynamic Reviewer Email Lookup Function ---
@@ -58,43 +74,45 @@ async function getReviewerEmail(role: 'supervisor' | 'owner', department?: strin
     return null;
 }
 
-// --- Resend Notification for New Submission ---
-async function sendNewSubmissionNotification(newReq: RequisitionData & { id: string }, supervisorEmail: string) {
+// --- RESEND EMAIL NOTIFICATION FUNCTION (For New Requisition) ---
+async function sendNewRequisitionEmail(reqData: RequisitionData, supervisorEmail: string) {
     const SENDER_EMAIL = 'no-reply@yourverifieddomain.com'; 
-    
-    const toEmail = supervisorEmail; 
-    const subject = `🔔 ACTION REQUIRED: New Requisition from ${newReq.requesterName}`;
+    const totalCost = (reqData.quantity * reqData.unitCost).toFixed(2);
     const dashboardLink = 'https://your-app-domain.com/my-requisitions?view=action'; 
-    
-    const itemDetails = `Requisition for <b>${newReq.itemName}</b> (Dept: ${newReq.department}, Cost: #$${(newReq.quantity * newReq.unitCost).toFixed(2)})`;
-    
-    const htmlBody = `<p>A new requisition has been submitted by ${newReq.requesterName} from the ${newReq.department} department and requires your immediate attention.</p>
-                      <p>${itemDetails}</p>
-                      <p>Please review and approve or reject the request in your Action Queue now.</p>
+
+    const subject = `⭐ NEW REQUISITION: ${reqData.itemName} from ${reqData.requesterName}`;
+    const htmlBody = `<p>A new requisition requires your immediate review:</p>
+                      <ul>
+                          <li>Item: <b>${reqData.itemName}</b></li>
+                          <li>Department: <b>${reqData.department}</b></li>
+                          <li>Requester: ${reqData.requesterName}</li>
+                          <li>Total Cost: #$${totalCost}</li>
+                      </ul>
+                      <p>Please review it in your Action Queue now.</p>
                       <p>Review Now: <a href="${dashboardLink}">Click Here</a></p>`;
 
     try {
-        // FIX: Removed unused 'data' from destructuring
         const { error } = await resend.emails.send({
             from: SENDER_EMAIL,
-            to: [toEmail],
+            to: [supervisorEmail],
             subject: subject,
             html: htmlBody,
         });
 
         if (error) {
-            console.error('Resend Email Error on Submission:', error);
+            console.error('Resend Email Error:', error);
         } else {
-            console.log(`New submission notification email sent successfully to ${toEmail}.`);
+            console.log(`New requisition notification sent to supervisor: ${supervisorEmail}.`);
         }
     } catch (err) {
-        console.error('Failed to send submission email via Resend:', err);
+        console.error('Failed to send new requisition email via Resend:', err);
     }
 }
 
-// --- 1. GET HANDLER (With Pagination) ---
 
-export async function GET(req: NextRequest) {
+// --- POST HANDLER (Create New Requisition) ---
+export async function POST(req: NextRequest): Promise<NextResponse<{ message: string; id?: string }>> {
+    
     const session = await getServerSession(options);
 
     if (!session || !session.user) {
@@ -102,164 +120,52 @@ export async function GET(req: NextRequest) {
     }
     
     const user = session.user as UserSession;
-    const userRole = user.role;
-    const userDepartment = user.department;
-    // const userEmail = user.email; // Note: userEmail is defined but unused in the logic below
-
-    const { searchParams } = new URL(req.url);
-    const view = searchParams.get('view'); 
-
-    // --- Pagination Parameters ---
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10'); // Default limit to 10
-    const offset = (page - 1) * limit;
-    // ----------------------------
 
     try {
-        const requisitionsRef = db.collection('requisitions');
-        let query: Query = requisitionsRef;
+        // Cast the request body to the expected type
+        const data = await req.json() as RequisitionData;
         
-        // --- Apply Role-Based Query Filters ---
-        if (userRole === 'staff') {
-            query = query
-                .where('requesterEmail', '==', user.email)
-                .orderBy('created', 'desc');
-        } else if (userRole === 'owner') {
-            if (view === 'action') {
-                query = query
-                    .where('status', 'in', ['Pending Supervisor Review', 'Approved by Supervisor'])
-                    .orderBy('created', 'desc');
-            } else {
-                query = query
-                    .where('status', 'in', [
-                        'Pending Supervisor Review', 
-                        'Approved by Supervisor',    
-                        'Approved',                  
-                        'Rejected by Supervisor',    
-                        'Rejected by Owner',         
-                        'Canceled'                   
-                    ])
-                    .orderBy('created', 'desc');
-            }
-        } else if (userRole === 'supervisor' && userDepartment) {
-            if (view === 'action') {
-                query = query
-                    .where('department', '==', userDepartment)
-                    .where('status', '==', 'Pending Supervisor Review')
-                    .orderBy('created', 'desc');
-            } else if (view === 'my-submissions') {
-                query = query
-                    .where('requesterEmail', '==', user.email)
-                    .orderBy('created', 'desc');
-            } else {
-                 query = query
-                    .where('department', '==', userDepartment)
-                    .where('status', 'in', ['Pending Supervisor Review', 'Approved by Supervisor', 'Rejected by Supervisor'])
-                    .orderBy('created', 'desc');
-            }
-        } else {
-            return NextResponse.json({ message: 'Unauthorized role or missing department information.' }, { status: 403 });
+        // Basic validation
+        if (!data.itemName || !data.quantity || !data.unitCost) {
+            return NextResponse.json({ message: 'Missing required fields.' }, { status: 400 });
         }
         
-        // --- Pagination Implementation ---
-        // We query for LIMIT + 1 to easily check if there's a next page.
-        const snapshot = await query
-            .offset(offset)
-            .limit(limit + 1) 
-            .get();
-        
-        const hasNextPage = snapshot.docs.length > limit;
-        const documents = hasNextPage ? snapshot.docs.slice(0, limit) : snapshot.docs;
-        // ------------------------------------
-        
-        const requisitions = documents.map(doc => {
-            const data = doc.data();
-            const createdDate = data.created && data.created.toDate 
-                ? data.created.toDate().toISOString()
-                : data.created;
-
-            return {
-                id: doc.id,
-                ...data,
-                created: createdDate,
-            };
-        });
-
-        // Return the data array AND the pagination metadata
-        return NextResponse.json({
-            data: requisitions,
-            meta: {
-                currentPage: page,
-                limit: limit,
-                hasNextPage: hasNextPage,
-                hasPrevPage: page > 1,
-            }
-        });
-
-    } catch (error) {
-        console.error('Failed to fetch requisitions:', error);
-        return NextResponse.json({ message: 'An unexpected error occurred while fetching data.' }, { status: 500 });
-    }
-}
-
-
-// --- 2. POST HANDLER ---
-
-export async function POST(req: NextRequest) {
-    const session = await getServerSession(options);
-
-    if (!session || !session.user) {
-        return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
-    }
-
-    const user = session.user as UserSession;
-    
-    if (!user.department) {
-        return NextResponse.json({ message: 'User profile is incomplete. Missing department for submission.' }, { status: 400 });
-    }
-    
-    try {
-        const body = await req.json();
-
-        if (!body.itemName || body.quantity == null || body.unitCost == null) {
-            return NextResponse.json({ message: 'Missing required requisition fields.' }, { status: 400 });
-        }
-        
-        // Construct the document data (matching RequisitionData interface)
-        const newRequisition: RequisitionData = { 
-            itemName: body.itemName,
-            quantity: body.quantity,
-            unitCost: body.unitCost,
-            reason: body.reason || 'No reason provided.',
-            employeeId: body.employeeId,
-            
-            requesterEmail: user.email,
+        // Ensure requester details are taken from the session for security/accuracy
+        const requesterData = {
             requesterName: user.name,
-            department: user.department, 
+            requesterEmail: user.email,
+            department: user.department || 'N/A', // Use department from session
+        };
+        
+        // FIX: Use NewRequisitionDocument to correctly type the object being added to Firestore
+        const docData: NewRequisitionDocument = {
+            ...data, 
+            ...requesterData, // Override client-provided requester details with session data
             
-            // These fields are for Firestore but not part of the base RequisitionData interface:
+            // These fields are for Firestore and now included in NewRequisitionDocument:
             status: 'Pending Supervisor Review', 
             created: FieldValue.serverTimestamp(), 
+            
+            // Initialize other fields if necessary
         };
 
-        // 3. Write to Firestore
-        const docRef = await db.collection('requisitions').add(newRequisition);
+        const docRef = await db.collection('requisitions').add(docData);
         
-        // 4. Find the correct Supervisor Email
-        const supervisorEmail = await getReviewerEmail('supervisor', newRequisition.department);
+        // 4. Send email notification to the Supervisor
+        const supervisorEmail = await getReviewerEmail('supervisor', docData.department);
         
         if (supervisorEmail) {
-            // 5. Send Notification to Supervisor
-            await sendNewSubmissionNotification({ ...newRequisition, id: docRef.id }, supervisorEmail); 
+            // Send email to the supervisor
+            await sendNewRequisitionEmail(docData, supervisorEmail);
         } else {
-            console.warn(`WARNING: No supervisor found for department: ${newRequisition.department}. Email notification skipped.`);
+            console.warn(`WARNING: No supervisor found for department ${docData.department}. Skipping notification.`);
+            // In a real app, you might set the status to 'Needs Routing' here
         }
 
-        // 6. Return the new document ID
-        return NextResponse.json({ id: docRef.id, message: 'Requisition submitted successfully.' }, { status: 201 });
+        return NextResponse.json({ message: 'Requisition submitted successfully.', id: docRef.id }, { status: 201 });
 
     } catch (error) {
-        console.error('Failed to submit requisition:', error);
-        return NextResponse.json({ message: 'An unexpected error occurred while submitting the requisition.' }, { status: 500 });
+        console.error('Failed to create requisition:', error);
+        return NextResponse.json({ message: 'An unexpected error occurred.' }, { status: 500 });
     }
 }
