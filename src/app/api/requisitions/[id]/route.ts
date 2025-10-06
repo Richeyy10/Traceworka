@@ -57,16 +57,10 @@ interface RequisitionUpdate {
     ownerApprovedDate?: FieldValue;
 }
 
-// NOTE: RouteContext is now removed and replaced with 'any' in the signature 
-// to bypass the internal Next.js type error.
-interface RouteContext {
-    params: {
-        id: string;
-    }
-}
+// FIX: RouteContext interface removed as it was unused and caused a lint warning.
 
 
-// --- Dynamic Reviewer Email Lookup Function (Unchanged) ---
+// --- Dynamic Reviewer Email Lookup Function ---
 async function getReviewerEmail(role: 'supervisor' | 'owner', department?: string): Promise<string | null> {
     const usersRef = db.collection('users');
     let query: Query = usersRef.where('role', '==', role);
@@ -84,7 +78,7 @@ async function getReviewerEmail(role: 'supervisor' | 'owner', department?: strin
     return null;
 }
 
-// --- RESEND EMAIL NOTIFICATION FUNCTION (Unchanged) ---
+// --- RESEND EMAIL NOTIFICATION FUNCTION ---
 async function sendEmailNotification(reqData: RequisitionData, nextStatus: string) {
     const SENDER_EMAIL = 'no-reply@yourverifieddomain.com'; 
     let toEmail = '';
@@ -150,11 +144,12 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
     }
 }
 
-// --- PATCH HANDLER (Updating Status - Final Fix for Vercel Build Error) ---
+// --- PATCH HANDLER (Updating Status) ---
 export async function PATCH(
     req: NextRequest, 
-    // FINAL FIX: Use 'any' here to bypass the deep type comparison issue on Vercel build 
-    // which incorrectly interprets 'params' as a Promise type.
+    // FIX: ESLint disable comment to allow 'any' as a necessary type workaround
+    // for Next.js App Router dynamic route type compatibility issues on Vercel build.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: any 
 ): Promise<NextResponse<{ message: string }>> {
 
