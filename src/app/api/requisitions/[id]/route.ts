@@ -35,13 +35,12 @@ interface RequisitionData {
     requesterEmail: string;
     department: string;
     status: string;
-    rejectionReason?: string;
+    rejectionReason?: string; // Used when sending rejection email
     quantity: number;
     unitCost: number;
 }
 
-// --- NEW: Interface to satisfy type checking for updateData ---
-// Fields can be strings, numbers, or Firestore's FieldValue (like delete or timestamp).
+// Interface to satisfy type checking for updateData and PATCH handler type
 interface RequisitionUpdate {
     status: string;
     rejectionReason?: string | FieldValue;
@@ -57,9 +56,15 @@ interface RequisitionUpdate {
     ownerApprovedEmail?: string | FieldValue;
     ownerApprovedDate?: FieldValue;
 }
-// -----------------------------------------------------------
 
-// --- Dynamic Reviewer Email Lookup Function (Unchanged) ---
+// Interface for Next.js dynamic route context
+interface RouteContext {
+    params: {
+        id: string;
+    }
+}
+
+// --- Dynamic Reviewer Email Lookup Function ---
 async function getReviewerEmail(role: 'supervisor' | 'owner', department?: string): Promise<string | null> {
     const usersRef = db.collection('users');
     let query: Query = usersRef.where('role', '==', role);
@@ -77,7 +82,7 @@ async function getReviewerEmail(role: 'supervisor' | 'owner', department?: strin
     return null;
 }
 
-// --- RESEND EMAIL NOTIFICATION FUNCTION (Fix: Removed unused 'data' from destructuring) ---
+// --- RESEND EMAIL NOTIFICATION FUNCTION (Fix: Removed unused 'data') ---
 async function sendEmailNotification(reqData: RequisitionData, nextStatus: string) {
     const SENDER_EMAIL = 'no-reply@yourverifieddomain.com'; 
     let toEmail = '';
@@ -89,7 +94,6 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
     const dashboardLink = 'https://your-app-domain.com/my-requisitions'; 
 
     switch (nextStatus) {
-        // ... (Cases remain the same) ...
         case 'Approved':
             toEmail = reqData.requesterEmail;
             subject = `✅ APPROVED: ${reqData.itemName} is Ready for Fulfillment`;
@@ -126,7 +130,7 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
 
     if (toEmail) {
         try {
-            // FIX 1: Removed 'data' from destructuring
+            // FIX: Removed unused 'data' from destructuring
             const { error } = await resend.emails.send({
                 from: SENDER_EMAIL,
                 to: [toEmail],
@@ -145,8 +149,12 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
     }
 }
 
-// --- PATCH HANDLER (Updating Status) ---
-export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
+// --- PATCH HANDLER (Updating Status - Fixes for Type Safety and Vercel Error) ---
+export async function PATCH(
+    req: NextRequest, 
+    context: RouteContext // FIX: Use the explicit interface for type compliance
+): Promise<NextResponse<{ message: string }>> { // FIX: Explicit return type for type compliance
+
     const session = await getServerSession(options);
     const { id } = context.params;
 
@@ -171,9 +179,10 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
             return NextResponse.json({ message: 'Requisition not found.' }, { status: 404 });
         }
         
-        const currentData = doc.data() as RequisitionData; 
+        // Ensure data is typed correctly for merging later
+        const currentData = doc.data() as Omit<RequisitionData, 'id' | 'rejectionReason'>; 
         
-        // FIX 2 & 3: Changed 'let updateData: any' to 'const updateData: RequisitionUpdate'
+        // FIX: Changed 'let updateData: any' to 'const updateData: RequisitionUpdate'
         const updateData: RequisitionUpdate = { status }; 
         
         // --- Auditing and data clearing logic ---
@@ -204,6 +213,7 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
             updateData.rejectedEmail = user.email;
             updateData.rejectedDate = now;
             
+            // Clear other approval/cancellation fields
             updateData.supervisorApprovedBy = FieldValue.delete();
             updateData.supervisorApprovedEmail = FieldValue.delete();
             updateData.supervisorApprovedDate = FieldValue.delete();
@@ -216,6 +226,7 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
             updateData.canceledBy = user.name;
             updateData.canceledDate = now; 
             
+            // Clear other fields
             updateData.rejectionReason = FieldValue.delete();
             updateData.rejectedBy = FieldValue.delete();
             updateData.rejectedEmail = FieldValue.delete();
@@ -237,7 +248,7 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
             ...currentData, 
             id: doc.id, 
             rejectionReason: rejectionReason 
-        }, status);
+        } as RequisitionData, status);
 
         return NextResponse.json({ message: `Requisition status updated to ${status}` });
 
