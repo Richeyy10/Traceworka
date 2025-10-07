@@ -2,58 +2,87 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
+// NOTE: Assuming you have @types/firebase-admin installed for the Query type
+import type * as FirebaseFirestore from 'firebase-admin/firestore';
 
-// Use the now-working path to your NextAuth options
 import { options } from '@/app/api/auth/[...nextauth]/options'; 
 
-// --- 1. FIREBASE ADMIN INITIALIZATION (Must be defined outside the GET function) ---
+// --- TYPE DEFINITIONS FOR SERVER-SIDE USE ---
+// Define the Requisition structure reflecting the data fetched from Firestore
+interface ServerRequisition {
+    id: string;
+    itemName: string;
+    quantity: number;
+    department: string;
+    requesterName: string;
+    employeeId: string;
+    unitCost: number;
+    reason: string;
+    status: 'Pending Supervisor Review' | 'Approved by Supervisor' | 'Pending Owner Review' | 'Approved' | 'Rejected by Supervisor' | 'Rejected by Owner' | 'Canceled';
+    requesterEmail: string;
+    created: { toDate: () => Date } | Date | string | null;
+    rejectionReason?: string;
+    supervisorApprovedBy?: string;
+    ownerApprovedBy?: string;
+    rejectedBy?: string;
+}
+
+// Define the response shape sent to the client
+interface PaginatedResponse {
+    data: ServerRequisition[];
+    meta: {
+        currentPage: number;
+        limit: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+    };
+}
+// ---------------------------------------------
+
+
+// --- FIREBASE ADMIN INITIALIZATION ---
 if (!getApps().length) {
     try {
-        // This is the line that was likely crashing. It must parse correctly on Vercel.
         const serviceAccountKey = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
         initializeApp({
             credential: cert(serviceAccountKey),
         });
         console.log("Firebase Admin SDK initialized successfully.");
     } catch (error) {
-        // IMPORTANT: Log this error. If you see this, the ENV variable is wrong.
         console.error("CRITICAL ERROR: Failed to initialize Firebase Admin SDK:", error);
     }
 }
 const db = getFirestore();
 
-// --- 2. PAGINATION UTILITY ---
+// --- PAGINATION UTILITY ---
 const ITEMS_PER_PAGE = 10;
 
-// Helper to sanitize query params
 const getQueryParam = (request: NextRequest, key: string): string | undefined => {
     return request.nextUrl.searchParams.get(key) || undefined;
 };
 
 
-// --- 3. THE MAIN GET HANDLER (Authentication and Database Logic) ---
+// --- THE MAIN GET HANDLER ---
 export async function GET(request: NextRequest) {
     try {
-        // **Authentication Check (Successfully isolated and confirmed working)**
         const session = await getServerSession(options);
 
         if (!session || !session.user || !session.user.email) {
             return new NextResponse("Authentication required", { status: 401 });
         }
 
-        // Extract user data from the session
         const userRole = session.user.role;
         const userDepartment = session.user.department;
         const userEmail = session.user.email; 
 
-        // Extract pagination and view params from URL
         const view = getQueryParam(request, 'view') || 'my-submissions';
         const page = parseInt(getQueryParam(request, 'page') || '1', 10);
         const limit = parseInt(getQueryParam(request, 'limit') || ITEMS_PER_PAGE.toString(), 10);
         const offset = (page - 1) * limit;
 
         const requisitionsRef = db.collection('requisitions');
-        let q: any = requisitionsRef;
+        // FIX 1: Using FirebaseFirestore.Query instead of 'any'
+        let q: FirebaseFirestore.Query = requisitionsRef; 
 
         // --- Dynamic Query Logic based on Role and View ---
         if (userRole === 'staff' || view === 'my-submissions') {
@@ -68,21 +97,19 @@ export async function GET(request: NextRequest) {
         else if (userRole === 'owner' && view === 'action') {
             q = q.where('status', '==', 'Approved by Supervisor');
         } 
-        
-        // Owner view 'all' or any other unhandled case simply returns the base query.
 
-        // --- Execute Query for the current page ---
-        // Note: Firestore requires ordering before limit/offset. We will assume a default order 
-        // by creation time for safety, if you haven't specified one.
-        q = q.orderBy('created', 'desc'); // ADDED: Required for stable pagination/offset
+        // Firestore requires ordering for stable pagination/offset
+        q = q.orderBy('created', 'desc'); 
 
+        // --- Execute Query ---
         const snapshot = await q.limit(limit + 1).offset(offset).get();
+        
+        // FIX 2: Using ServerRequisition[] instead of 'any[]'
         const data = snapshot.docs.map(doc => ({ 
             id: doc.id, 
             ...doc.data(),
-            // Ensure `created` is sent as a serializable string if it's a Timestamp
             created: doc.data().created ? doc.data().created.toDate().toISOString() : null
-        })) as any[];
+        })) as ServerRequisition[]; // <-- Type applied here
 
         
         const hasNextPage = data.length > limit;
@@ -95,14 +122,10 @@ export async function GET(request: NextRequest) {
             hasPrevPage: page > 1,
         };
 
-        return NextResponse.json({ data: finalData, meta });
+        return NextResponse.json( { data: finalData, meta } as PaginatedResponse);
 
     } catch (error) {
-        // This catch block handles crashes from the Firestore or Firebase Admin logic.
         console.error("Firestore Requisitions GET Error:", error);
         return new NextResponse("Internal Server Error fetching requisitions.", { status: 500 });
     }
 }
-
-// NOTE: You will need to add the POST handler and any other necessary handlers 
-// for creating/updating requisitions here as well.
