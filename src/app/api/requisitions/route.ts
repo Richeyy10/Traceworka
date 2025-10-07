@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 // ⚠️ FIX: Import the new type-safe session utility instead of options/getServerSession directly
-import { auth } from '@/app/api/auth/auth'; 
+import { auth } from '/app/api/auth/auth'; 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Query } from 'firebase-admin/firestore';
 import { Resend } from 'resend'; 
