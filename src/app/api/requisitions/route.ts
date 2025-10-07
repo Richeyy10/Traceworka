@@ -1,7 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { getServerSession } from 'next-auth';
-// ASSUMPTION: This absolute path is correctly configured in tsconfig.json
-import { options } from '@auth/options'; 
+// ⚠️ FIX: Import the new type-safe session utility instead of options/getServerSession directly
+import { auth } from '../auth/auth'; 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, FieldValue, Query } from 'firebase-admin/firestore';
 import { Resend } from 'resend'; 
@@ -21,7 +20,7 @@ if (!getApps().length) {
 const db = getFirestore();
 const resend = new Resend(process.env.RESEND_API_KEY); 
 
-// Helper interfaces
+// Helper interfaces (for brevity, keeping only essential ones)
 interface UserSession {
     email: string;
     role: string;
@@ -31,16 +30,11 @@ interface UserSession {
 
 interface Requisition {
     id: string;
-    itemName: string;
-    quantity: number;
-    unitCost: number;
-    totalCost: number; // Not used in this file but useful for clients
-    requesterName: string;
+    // ... all requisition properties
     requesterEmail: string;
     department: string;
     status: string;
     created: FieldValue;
-    // ... other fields needed for query results
 }
 
 interface PaginatedResponse {
@@ -53,8 +47,6 @@ interface PaginatedResponse {
     };
 }
 
-
-// Data received from the client request body (req.json())
 interface RequisitionData {
     itemName: string;
     quantity: number;
@@ -69,11 +61,7 @@ interface NewRequisitionDocument extends RequisitionData {
     status: string;
     created: FieldValue;
     supervisorApprovedBy?: string;
-    supervisorApprovedEmail?: string;
-    supervisorApprovedDate?: FieldValue;
-    ownerApprovedBy?: string;
-    ownerApprovedEmail?: string;
-    ownerApprovedDate?: FieldValue;
+    // ... other audit fields
 }
 
 // --- Dynamic Reviewer Email Lookup Function ---
@@ -86,12 +74,7 @@ async function getReviewerEmail(role: 'supervisor' | 'owner', department?: strin
     } 
     
     const snapshot = await query.limit(1).get();
-
-    if (!snapshot.empty) {
-        return snapshot.docs[0].data().email as string;
-    }
-
-    return null;
+    return snapshot.empty ? null : snapshot.docs[0].data().email as string;
 }
 
 // --- RESEND EMAIL NOTIFICATION FUNCTION (For New Requisition) ---
@@ -108,22 +91,15 @@ async function sendNewRequisitionEmail(reqData: RequisitionData, supervisorEmail
                             <li>Requester: ${reqData.requesterName}</li>
                             <li>Total Cost: #$${totalCost}</li>
                         </ul>
-                        <p>Please review it in your Action Queue now.</p>
                         <p>Review Now: <a href="${dashboardLink}">Click Here</a></p>`;
 
     try {
-        const { error } = await resend.emails.send({
+        await resend.emails.send({
             from: SENDER_EMAIL,
             to: [supervisorEmail],
             subject: subject,
             html: htmlBody,
         });
-
-        if (error) {
-            console.error('Resend Email Error:', error);
-        } else {
-            console.log(`New requisition notification sent to supervisor: ${supervisorEmail}.`);
-        }
     } catch (err) {
         console.error('Failed to send new requisition email via Resend:', err);
     }
@@ -133,8 +109,8 @@ async function sendNewRequisitionEmail(reqData: RequisitionData, supervisorEmail
 // --- POST HANDLER (Create New Requisition) ---
 export async function POST(req: NextRequest): Promise<NextResponse<{ message: string; id?: string }>> {
     
-    // 💥 FIX 1: Explicitly pass req and null to resolve session on Vercel
-    const session = await getServerSession(req, null, options);
+    // 💥 FIX 1: Use the type-safe utility function
+    const session = await auth();
 
     if (!session || !session.user) {
         return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
@@ -184,21 +160,19 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ message: st
 // --- GET HANDLER (Fetch/Query Requisitions - Used by the client page) ---
 export async function GET(req: NextRequest): Promise<NextResponse<PaginatedResponse | { error: string }>> {
     
-    // 💥 FIX 2: Explicitly pass req and null to resolve session on Vercel
-    const session = await getServerSession(req, null, options);
+    // 💥 FIX 2: Use the type-safe utility function
+    const session = await auth();
     
     if (!session || !session.user) {
-        // This is the error message the SWR hook is receiving on deployment
         return NextResponse.json({ error: "Authentication required to fetch requisitions." }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
     
-    // Query parameters used by your client component (page.tsx)
     const userRole = session.user.role || searchParams.get('role');
     const userEmail = session.user.email;
     const userDepartment = session.user.department;
-    const view = searchParams.get('view'); // 'action', 'my-submissions', or 'all'
+    const view = searchParams.get('view'); 
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const offset = (page - 1) * limit;
@@ -207,26 +181,19 @@ export async function GET(req: NextRequest): Promise<NextResponse<PaginatedRespo
 
     // 1. FILTERING BASED ON USER ROLE AND VIEW
     if (userRole === 'staff' || view === 'my-submissions') {
-        // Staff view or Supervisor/Owner's personal submissions
         query = query.where('requesterEmail', '==', userEmail);
-    } else if (userRole === 'supervisor' && view === 'action') {
-        // Supervisor Action Queue: Pending Supervisor Review in their department
-        if (userDepartment) {
-            query = query.where('department', '==', userDepartment)
-                         .where('status', '==', 'Pending Supervisor Review');
-        } else {
-            // No department defined for supervisor, should return empty or error
-            return NextResponse.json({ data: [], meta: { currentPage: 1, limit: limit, hasNextPage: false, hasPrevPage: false } });
-        }
+    } else if (userRole === 'supervisor' && view === 'action' && userDepartment) {
+        query = query.where('department', '==', userDepartment)
+                     .where('status', '==', 'Pending Supervisor Review');
     } else if (userRole === 'owner' && view === 'action') {
-        // Owner Action Queue: Approved by Supervisor or Pending Supervisor Review (to handle supervisor absence)
         query = query.where('status', 'in', ['Approved by Supervisor', 'Pending Supervisor Review']);
-    } 
-    // If userRole is 'owner' and view is 'all', no further query filtering is needed.
-
+    } else if (userRole === 'supervisor' && view === 'action' && !userDepartment) {
+        // Supervisor with no department defined
+        return NextResponse.json({ data: [], meta: { currentPage: 1, limit: limit, hasNextPage: false, hasPrevPage: false } });
+    }
+    // 'owner' with 'all' view has no filter
 
     // 2. PAGINATION
-    // Fetch one extra document to determine if there is a next page
     const snapshot = await query.limit(limit + 1).offset(offset).get();
     
     const data: Requisition[] = snapshot.docs.slice(0, limit).map(doc => ({
