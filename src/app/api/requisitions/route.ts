@@ -1,60 +1,108 @@
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-// CRITICAL: Use the path that worked best for you locally, or try the direct root alias.
+
+// Use the now-working path to your NextAuth options
 import { options } from '@/app/api/auth/[...nextauth]/options'; 
 
-// This function only tests if the session can be retrieved.
-export async function GET(request: NextRequest) {
+// --- 1. FIREBASE ADMIN INITIALIZATION (Must be defined outside the GET function) ---
+if (!getApps().length) {
     try {
-        // 1. Attempt to retrieve the user session
-        const session = await getServerSession(options);
-
-        // 2. Check the session status
-        if (!session || !session.user || !session.user.email) {
-            console.log("DEBUG: Session not found, returning 401.");
-            // Returns 401, which triggers the SWR error on the client page.
-            return new NextResponse(JSON.stringify({ 
-                error: "Authentication failed. Session is null or incomplete.",
-                details: {
-                    isAuthenticated: !!session
-                }
-            }), { 
-                status: 401,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        // 3. If we reach here, authentication worked!
-        console.log(`DEBUG: Session successfully retrieved for user: ${session.user.email}`);
-
-        // 4. Return dummy data to prove success (the client page expects this format)
-        return NextResponse.json({ 
-            data: [
-                { 
-                    id: "TEST-001", 
-                    itemName: "Debug Item", 
-                    quantity: 1, 
-                    department: session.user.department || 'Unknown',
-                    requesterName: session.user.name || 'Test User',
-                    unitCost: 10.00,
-                    reason: "Test",
-                    status: 'Approved',
-                    requesterEmail: session.user.email,
-                    created: new Date().toISOString(),
-                }
-            ], 
-            meta: { currentPage: 1, limit: 10, hasNextPage: false, hasPrevPage: false } 
+        // This is the line that was likely crashing. It must parse correctly on Vercel.
+        const serviceAccountKey = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
+        initializeApp({
+            credential: cert(serviceAccountKey),
         });
-
+        console.log("Firebase Admin SDK initialized successfully.");
     } catch (error) {
-        // This handles crashes related to module loading or next-auth initialization.
-        console.error("FATAL ERROR IN REQUISITIONS ROUTE:", error);
-        return new NextResponse(JSON.stringify({ 
-            error: "Internal Server Error during session processing.",
-            detail: (error as Error).message || "Unknown error."
-        }), { 
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
+        // IMPORTANT: Log this error. If you see this, the ENV variable is wrong.
+        console.error("CRITICAL ERROR: Failed to initialize Firebase Admin SDK:", error);
     }
 }
+const db = getFirestore();
+
+// --- 2. PAGINATION UTILITY ---
+const ITEMS_PER_PAGE = 10;
+
+// Helper to sanitize query params
+const getQueryParam = (request: NextRequest, key: string): string | undefined => {
+    return request.nextUrl.searchParams.get(key) || undefined;
+};
+
+
+// --- 3. THE MAIN GET HANDLER (Authentication and Database Logic) ---
+export async function GET(request: NextRequest) {
+    try {
+        // **Authentication Check (Successfully isolated and confirmed working)**
+        const session = await getServerSession(options);
+
+        if (!session || !session.user || !session.user.email) {
+            return new NextResponse("Authentication required", { status: 401 });
+        }
+
+        // Extract user data from the session
+        const userRole = session.user.role;
+        const userDepartment = session.user.department;
+        const userEmail = session.user.email; 
+
+        // Extract pagination and view params from URL
+        const view = getQueryParam(request, 'view') || 'my-submissions';
+        const page = parseInt(getQueryParam(request, 'page') || '1', 10);
+        const limit = parseInt(getQueryParam(request, 'limit') || ITEMS_PER_PAGE.toString(), 10);
+        const offset = (page - 1) * limit;
+
+        const requisitionsRef = db.collection('requisitions');
+        let q: any = requisitionsRef;
+
+        // --- Dynamic Query Logic based on Role and View ---
+        if (userRole === 'staff' || view === 'my-submissions') {
+            q = q.where('requesterEmail', '==', userEmail);
+        } 
+        
+        else if (userRole === 'supervisor' && view === 'action') {
+            q = q.where('status', '==', 'Pending Supervisor Review')
+                 .where('department', '==', userDepartment);
+        } 
+        
+        else if (userRole === 'owner' && view === 'action') {
+            q = q.where('status', '==', 'Approved by Supervisor');
+        } 
+        
+        // Owner view 'all' or any other unhandled case simply returns the base query.
+
+        // --- Execute Query for the current page ---
+        // Note: Firestore requires ordering before limit/offset. We will assume a default order 
+        // by creation time for safety, if you haven't specified one.
+        q = q.orderBy('created', 'desc'); // ADDED: Required for stable pagination/offset
+
+        const snapshot = await q.limit(limit + 1).offset(offset).get();
+        const data = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(),
+            // Ensure `created` is sent as a serializable string if it's a Timestamp
+            created: doc.data().created ? doc.data().created.toDate().toISOString() : null
+        })) as any[];
+
+        
+        const hasNextPage = data.length > limit;
+        const finalData = hasNextPage ? data.slice(0, limit) : data;
+        
+        const meta = {
+            currentPage: page,
+            limit: limit,
+            hasNextPage: hasNextPage,
+            hasPrevPage: page > 1,
+        };
+
+        return NextResponse.json({ data: finalData, meta });
+
+    } catch (error) {
+        // This catch block handles crashes from the Firestore or Firebase Admin logic.
+        console.error("Firestore Requisitions GET Error:", error);
+        return new NextResponse("Internal Server Error fetching requisitions.", { status: 500 });
+    }
+}
+
+// NOTE: You will need to add the POST handler and any other necessary handlers 
+// for creating/updating requisitions here as well.
