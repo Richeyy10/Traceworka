@@ -2,7 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 
 import { getServerSession } from 'next-auth';
 
-import { options } from '@auth/options'; 
+import { options } from "../auth/[...nextauth]/options";
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 
