@@ -1,22 +1,7 @@
-// import { DefaultSession } from 'next-auth';
-
-// declare module "next-auth" {
-//   interface Session {
-//     user: {
-//       role: string
-//       address: string
-//     } & DefaultSession["user"]
-//   }
-
-//   interface User {
-//     role?: string;
-//   }
-// }
-
 import { DefaultSession } from "next-auth";
 
 // This declaration file extends NextAuth's default types
-// to include our custom fields (role and department)
+// to include our custom fields (role, department, and employeeId)
 
 declare module "next-auth" {
   /**
@@ -29,6 +14,8 @@ declare module "next-auth" {
       role: string;
       /** The user's department or branch. */
       department: string;
+      /** The user's employee ID. (FIXED) */
+      employeeId: string; // <-- ADDED THIS LINE
     } & DefaultSession["user"];
   }
 
@@ -38,5 +25,15 @@ declare module "next-auth" {
   interface User {
     role: string;
     department: string;
+    employeeId: string; // <-- ADDED THIS LINE
+  }
+} 
+
+// CRITICAL: We also need to extend the JWT interface if you are passing the data through the token
+declare module "next-auth/jwt" {
+  interface JWT {
+    role: string;
+    department: string;
+    employeeId: string; // <-- ADDED THIS LINE
   }
 }
