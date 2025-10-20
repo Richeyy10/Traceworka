@@ -7,6 +7,7 @@ import Image from 'next/image';
 import logo from '@/assets/logowithnobkg.png'
 import { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast'; 
+// REMOVED: import { Timestamp } from 'firebase-admin/firestore'; // Removed server-side import
 
 // --- NEW INTERFACES FOR PAGINATION ---
 interface PaginationMeta {
@@ -36,18 +37,16 @@ const fetcher = async (url: string) => {
     }
 };
 
-// Define a type for the potential Firestore Timestamp object
-type FirestoreTimestamp = {
-    toDate: () => Date;
-};
-
-// --- DATE FORMATTING HELPER FUNCTION (Unchanged) ---
-const formatFirestoreTimestamp = (timestamp: any): string => {
-    if (!timestamp) {
+// --- DATE FORMATTING HELPER FUNCTION (FIXED for client-side string) ---
+// Accepts the ISO date string returned by the API
+const formatFirestoreTimestamp = (dateString: string | null | undefined): string => {
+    // 🎯 FIX: Changed type from Timestamp to string
+    if (!dateString) {
         return 'N/A';
     }
     
-    const date = (timestamp as FirestoreTimestamp).toDate ? (timestamp as FirestoreTimestamp).toDate() : new Date(timestamp);
+    // Create a Date object from the ISO date string
+    const date = new Date(dateString);
     
     if (isNaN(date.getTime())) {
         return 'Invalid Date';
@@ -64,7 +63,7 @@ const formatFirestoreTimestamp = (timestamp: any): string => {
 };
 // ----------------------------------------
 
-// Requisition Interface (Unchanged)
+// Requisition Interface (Cleaned)
 interface Requisition {
     id: string;
     itemName: string;
@@ -76,7 +75,8 @@ interface Requisition {
     reason: string;
     status: 'Pending Supervisor Review' | 'Approved by Supervisor' | 'Pending Owner Review' | 'Approved' | 'Rejected by Supervisor' | 'Rejected by Owner' | 'Canceled';
     requesterEmail: string;
-    created: any; 
+    // 🎯 FIX: Explicitly set type to string (ISO date string from API)
+    created: string; 
     rejectionReason?: string;
     
     supervisorApprovedBy?: string; 
@@ -84,14 +84,47 @@ interface Requisition {
     rejectedBy?: string;
 }
 
+// User Session Interface (Needed for type safety in functions)
+interface UserSession {
+    email: string;
+    role: string;
+    department?: string;
+    name: string;
+}
+
 // --- NEW Pagination Constants ---
 const ITEMS_PER_PAGE = 10;
 
+// Helper to get display status (FIXED: removed redundant 'any' usage)
+const getDisplayStatus = (req: Requisition): string => {
+    let statusText: string = req.status;
+
+    // Display 'Pending Owner Review' as 'Pending Admin Review'
+    if (statusText === 'Pending Owner Review') {
+        return 'Pending Admin Review'; 
+    }
+
+    if (statusText === 'Approved') {
+        statusText = `Approved by ${req.ownerApprovedBy || 'Owner'}`;
+    } else if (statusText === 'Approved by Supervisor') {
+        statusText = `Approved by ${req.supervisorApprovedBy || 'Supervisor'}`;
+    } else if (statusText.includes('Rejected')) {
+        statusText = `Rejected by ${req.rejectedBy || 'Reviewer'}`;
+    }
+
+    return statusText;
+};
+
+
 export default function MyRequisitionsPage() {
+    // Correctly accessing the session data and setting defaults
     const { data: session, status } = useSession();
-    const userRole = session?.user?.role || 'staff';
-    const userDepartment = session?.user?.department || 'default';
-    const userEmail = session?.user?.email;
+    // Safely casting session.user to UserSession to ensure type safety in logic
+    const user = session?.user as (UserSession | undefined); 
+    
+    const userRole = user?.role || 'staff';
+    const userDepartment = user?.department || 'default';
+    const userEmail = user?.email;
 
     const isStaff = userRole === 'staff';
     const isSupervisor = userRole === 'supervisor';
@@ -146,7 +179,7 @@ export default function MyRequisitionsPage() {
                 body: JSON.stringify({ 
                     status: newStatus, 
                     rejectionReason: reason,
-                    performedBy: session?.user?.name || session?.user?.email 
+                    performedBy: user?.name || user?.email 
                 }),
             });
 
@@ -212,27 +245,6 @@ export default function MyRequisitionsPage() {
         } 
     };
 
-    // 🚀 UPDATED FUNCTION
-    const getDisplayStatus = (req: Requisition): string => {
-        let statusText: string = req.status;
-
-        // Display 'Pending Owner Review' as 'Pending Admin Review'
-        if (statusText === 'Pending Owner Review') {
-            return 'Pending Admin Review'; 
-        }
-
-        if (statusText === 'Approved') {
-            statusText = `Approved by ${req.ownerApprovedBy || 'Owner'}`;
-        } else if (statusText === 'Approved by Supervisor') {
-            statusText = `Approved by ${req.supervisorApprovedBy || 'Supervisor'}`;
-        } else if (statusText.includes('Rejected')) {
-            statusText = `Rejected by ${req.rejectedBy || 'Reviewer'}`;
-        }
-
-        return statusText;
-    };
-    // -----------------------------------------------------------
-
     // --- Loading and Auth Checks ---
 
     if (status === 'loading' || isLoading) {
@@ -261,8 +273,6 @@ export default function MyRequisitionsPage() {
 
     return (
         <div className="mx-auto p-4 sm:p-8 bg-gray-100 min-h-screen text-black">
-            {/* ... (Header and Tabs are unchanged) ... */}
-            
             {/* --- Header (Unchanged) --- */}
             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
                 <Image src={logo} alt='Traceworka' width={150} height={150} className='ml-0 sm:ml-[10%]' />
@@ -283,43 +293,25 @@ export default function MyRequisitionsPage() {
             </div>
 
             {/* --- Tab Navigation for Reviewers (Unchanged) --- */}
-            {(isSupervisor) && (
+            {(isSupervisor || isOwner) && (
                 <div className="flex border-b border-gray-300 mb-6">
-                    {/* Supervisor/Owner Action Queue Tab */}
+                    {/* Action Queue Tab */}
                     <button
                         onClick={() => setActiveView('action')}
                         className={`px-4 py-2 font-semibold ${activeView === 'action' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                     >
-                        Action Queue ({isSupervisor ? 'Subordinates' : 'Pending'})
+                        Action Queue
                     </button>
 
-                    {/* Supervisor's Personal History Tab */}
+                    {/* My Submissions Tab (For Supervisors) / Full History (For Owners) */}
                     <button
-                        onClick={() => setActiveView('my-submissions')}
-                        className={`px-4 py-2 font-semibold ${activeView === 'my-submissions' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        onClick={() => setActiveView(isSupervisor ? 'my-submissions' : 'all')}
+                        className={`px-4 py-2 font-semibold ${(activeView === 'my-submissions' && isSupervisor) || (activeView === 'all' && isOwner) ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                     >
-                        My Submissions
+                        {isSupervisor ? 'My Submissions' : 'Full History'}
                     </button>
                 </div>
             )}
-            {(isOwner) && (
-                <div className="flex border-b border-gray-300 mb-6">
-                    <button
-                        onClick={() => setActiveView('action')}
-                        className={`px-4 py-2 font-semibold ${activeView === 'action' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        Action Queue ({isSupervisor ? 'Subordinates' : 'Pending'})
-                    </button>
-                    <button
-                        onClick={() => setActiveView('all')}
-                        className={`px-4 py-2 font-semibold ${activeView === 'all' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        Full History
-                    </button>
-                </div>
-            )}
-
-
             
             <h2 className="text-xl font-bold mb-4 text-gray-700">{tableHeaderTitle}</h2>
 
@@ -352,7 +344,7 @@ export default function MyRequisitionsPage() {
                                 </th>
                             </tr>
                         </thead>
-                        {/* Table Body (Updated Logic) */}
+                        {/* Table Body */}
                         <tbody className="bg-white divide-y divide-gray-200 text-black">
                             {myRequisitions.map((req) => {
                                 const needsSupervisorAction = isSupervisor && activeView === 'action' && req.status === 'Pending Supervisor Review';
@@ -361,7 +353,7 @@ export default function MyRequisitionsPage() {
                                 
                                 const canStaffCancel = isStaff && req.status.includes('Pending');
                                 
-                                // 🚀 CRITICAL NEW CHECK: Does the requisition belong to the current user?
+                                // CRITICAL NEW CHECK: Does the requisition belong to the current user?
                                 const isOwnSubmission = req.requesterEmail === userEmail; 
 
                                 const statusColor = req.status.includes('Approved') ? 'bg-green-100 text-green-800' :
@@ -427,7 +419,7 @@ export default function MyRequisitionsPage() {
                 )}
             </div>
             
-            {/* --- NEW: Pagination Controls (Unchanged) --- */}
+            {/* --- Pagination Controls (Unchanged) --- */}
             {myRequisitions.length > 0 && (
                 <div className="flex justify-between items-center mt-4 px-4 py-2 bg-white rounded-lg shadow">
                     <button

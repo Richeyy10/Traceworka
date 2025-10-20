@@ -29,11 +29,14 @@ interface UserSession {
 }
 
 interface RequisitionData {
+    requesterName: string;
+    department: string;
     itemName: string;
     quantity: number;
     unitCost: number;
     reason: string;
     employeeId: string;
+    id: string;
 }
 
 // Helper Type for Reviewer Role
@@ -58,7 +61,7 @@ async function getReviewerEmail(role: ReviewerRole, department?: string): Promis
 }
 
 // --- Resend Notification for New Submission (Unchanged) ---
-async function sendNewSubmissionNotification(newReq: any, reviewerEmail: string) {
+async function sendNewSubmissionNotification(newReq: RequisitionData, reviewerEmail: string) {
     const SENDER_EMAIL = 'no-reply@yourverifieddomain.com'; 
     const toEmail = reviewerEmail; 
     const subject = `🔔 ACTION REQUIRED: New Requisition from ${newReq.requesterName}`;
