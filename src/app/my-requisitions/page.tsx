@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import logo from '@/assets/logowithnobkg.png'
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import toast from 'react-hot-toast'; 
 
 // --- NEW INTERFACES FOR PAGINATION ---
 interface PaginationMeta {
@@ -22,14 +23,18 @@ interface PaginatedResponse {
 // ------------------------------------
 
 // Define the fetcher function for SWR
-// The fetcher must now return the full PaginatedResponse
-const fetcher = (url: string) => fetch(url).then(res => {
-    if (!res.ok) {
-        const error = new Error('An error occurred while fetching the data.');
-        throw error;
+const fetcher = async (url: string) => {
+    try {
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error('Failed to fetch requisitions list from the server.');
+        }
+        return res.json();
+    } catch (error) {
+        console.error("SWR Fetch Error:", error);
+        throw error; 
     }
-    return res.json();
-});
+};
 
 // Define a type for the potential Firestore Timestamp object
 type FirestoreTimestamp = {
@@ -112,36 +117,54 @@ export default function MyRequisitionsPage() {
 
     const { data: response, error, isLoading, mutate } = useSWR<PaginatedResponse>(swrKey, fetcher);
 
+    // 💡 Add toast for SWR fetch errors
+    useEffect(() => {
+        if (error) {
+            toast.error('Could not load requisitions. Please check your connection or log in again.');
+        }
+    }, [error]);
+
     // Extract data and meta from the response
     const myRequisitions = response?.data || [];
     const meta = response?.meta || { currentPage: 1, limit: ITEMS_PER_PAGE, hasNextPage: false, hasPrevPage: false };
 
-    // --- Action Handlers (Unchanged, omitted for brevity) ---
+    // --- Action Handlers ---
     const [showReasonModal, setShowReasonModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [selectedRequisitionId, setSelectedRequisitionId] = useState<string | null>(null);
 
     const handleAction = async (id: string, newStatus: Requisition['status'], reason: string = '') => {
+        const actionName = newStatus.includes('Approved') ? 'Approval' : 
+                         newStatus.includes('Rejected') ? 'Rejection' : 'Cancellation';
+                         
+        const loadingToastId = toast.loading(`${actionName} in progress...`);
+
         try {
             const response = await fetch(`/api/requisitions/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus, rejectionReason: reason }),
+                body: JSON.stringify({ 
+                    status: newStatus, 
+                    rejectionReason: reason,
+                    performedBy: session?.user?.name || session?.user?.email 
+                }),
             });
 
             if (response.ok) {
-                console.log(`Requisition ${newStatus} successfully.`);
-                mutate(); // Refresh the data for the current view
+                toast.success(`Requisition successfully ${actionName.toLowerCase()}!`, { id: loadingToastId });
+                mutate();
+                
                 setShowReasonModal(false);
                 setRejectionReason('');
                 setSelectedRequisitionId(null);
             } else {
-                console.error(`Failed to update requisition status to ${newStatus}:`, await response.text());
-                alert(`Error: Failed to update requisition status. See console for details.`);
+                const errorText = await response.text();
+                toast.error(`Failed to complete action. Status: ${response.status}`, { id: loadingToastId });
+                console.error(`Failed to update requisition status:`, errorText);
             }
         } catch (error) {
+            toast.error('Network connection failed during update.', { id: loadingToastId });
             console.error('An unexpected error occurred:', error);
-            alert(`Error: An unexpected error occurred.`);
         }
     };
 
@@ -165,7 +188,7 @@ export default function MyRequisitionsPage() {
 
     const handleRejectSubmit = () => {
         if (!rejectionReason.trim()) {
-            console.error("Rejection reason is required.");
+            toast.error("Rejection reason cannot be empty.");
             return;
         }
 
@@ -184,13 +207,19 @@ export default function MyRequisitionsPage() {
     };
 
     const handleCancel = (id: string) => {
-        if (window.confirm('Are you sure you want to cancel this requisition?')) {
+        if (window.confirm('Are you sure you want to cancel this requisition? This cannot be undone.')) {
             handleAction(id, 'Canceled');
-        }
+        } 
     };
 
+    // 🚀 UPDATED FUNCTION
     const getDisplayStatus = (req: Requisition): string => {
         let statusText: string = req.status;
+
+        // Display 'Pending Owner Review' as 'Pending Admin Review'
+        if (statusText === 'Pending Owner Review') {
+            return 'Pending Admin Review'; 
+        }
 
         if (statusText === 'Approved') {
             statusText = `Approved by ${req.ownerApprovedBy || 'Owner'}`;
@@ -209,12 +238,12 @@ export default function MyRequisitionsPage() {
     if (status === 'loading' || isLoading) {
         return (
             <div className="flex justify-center items-center min-h-screen text-black">
-                <p>Loading...</p>
+                <p>Loading requisitions...</p>
             </div>
         );
     }
 
-    if (status === 'unauthenticated' || error) {
+    if (status === 'unauthenticated') {
         return (
             <div className="flex justify-center items-center min-h-screen text-black">
                 <p>Please log in to view your requisitions.</p>
@@ -224,7 +253,7 @@ export default function MyRequisitionsPage() {
         
     const dashboardTitle = isStaff ? "My Requisitions" : 
                             isSupervisor ? `Supervisor Dashboard (${userDepartment})` :
-                            "Owner Dashboard";
+                            "Admin Dashboard";
 
     const tableHeaderTitle = (activeView === 'action' ? 'Action Queue' : 
                              activeView === 'my-submissions' ? 'My Submissions' : 
@@ -232,6 +261,8 @@ export default function MyRequisitionsPage() {
 
     return (
         <div className="mx-auto p-4 sm:p-8 bg-gray-100 min-h-screen text-black">
+            {/* ... (Header and Tabs are unchanged) ... */}
+            
             {/* --- Header (Unchanged) --- */}
             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
                 <Image src={logo} alt='Traceworka' width={150} height={150} className='ml-0 sm:ml-[10%]' />
@@ -321,12 +352,18 @@ export default function MyRequisitionsPage() {
                                 </th>
                             </tr>
                         </thead>
-                        {/* Table Body (Unchanged) */}
+                        {/* Table Body (Updated Logic) */}
                         <tbody className="bg-white divide-y divide-gray-200 text-black">
                             {myRequisitions.map((req) => {
                                 const needsSupervisorAction = isSupervisor && activeView === 'action' && req.status === 'Pending Supervisor Review';
-                                const needsOwnerAction = isOwner && activeView === 'action' && (req.status === 'Approved by Supervisor' || req.status === 'Pending Supervisor Review' );
+                                // The Owner's action queue should include requests that skip the supervisor (like supervisor's own requests)
+                                const needsOwnerAction = isOwner && activeView === 'action' && (req.status === 'Approved by Supervisor' || req.status === 'Pending Owner Review' );
+                                
                                 const canStaffCancel = isStaff && req.status.includes('Pending');
+                                
+                                // 🚀 CRITICAL NEW CHECK: Does the requisition belong to the current user?
+                                const isOwnSubmission = req.requesterEmail === userEmail; 
+
                                 const statusColor = req.status.includes('Approved') ? 'bg-green-100 text-green-800' :
                                                     req.status.includes('Rejected') || req.status.includes('Canceled') ? 'bg-red-100 text-red-800' : 
                                                     'bg-yellow-100 text-yellow-800';
@@ -366,7 +403,8 @@ export default function MyRequisitionsPage() {
                                                 </button>
                                             )}
                                             
-                                            {(needsSupervisorAction || needsOwnerAction) && (
+                                            {/* Action buttons show only if action is needed AND it's NOT the user's own submission */}
+                                            {((needsSupervisorAction || needsOwnerAction) && !isOwnSubmission) && (
                                                 <>
                                                     <button onClick={() => handleApprove(req.id)} className="text-green-600 hover:text-green-900 mr-2">
                                                         Approve
@@ -389,7 +427,7 @@ export default function MyRequisitionsPage() {
                 )}
             </div>
             
-            {/* --- NEW: Pagination Controls --- */}
+            {/* --- NEW: Pagination Controls (Unchanged) --- */}
             {myRequisitions.length > 0 && (
                 <div className="flex justify-between items-center mt-4 px-4 py-2 bg-white rounded-lg shadow">
                     <button

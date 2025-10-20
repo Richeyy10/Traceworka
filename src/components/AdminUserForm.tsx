@@ -53,7 +53,7 @@ export default function AdminUserForm() {
     <div className="flex flex-col items-center">
       {message && <p className="text-green-600 text-center mb-4">{message}</p>}
       {error && <p className="text-red-600 text-center mb-4">{error}</p>}
-      <form onSubmit={handleSubmit} className="w-full space-y-4">
+      <form onSubmit={handleSubmit} className="w-full justify-center items-center space-y-4">
         <InputField
           label="Full Name"
           name="name"
@@ -88,16 +88,16 @@ export default function AdminUserForm() {
             name="role"
             value={formData.role}
             onChange={handleInputChange}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base text-black border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
           >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
+            <option value="user">Staff</option>
+            <option value="admin">Supervisor</option>
           </select>
         </div>
         <div>
           <button
             type="submit"
-            className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            className="w-full items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           >
             Create User
           </button>

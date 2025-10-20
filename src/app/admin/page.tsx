@@ -36,27 +36,29 @@ export default async function AdminPage() {
   } catch (error) {
     console.error('Error fetching user data:', error);
   }
-  
-  if (currentUserRole !== 'admin') {
+
+  const allowedRoles = ['admin', 'supervisor', 'owner'];
+
+  if (!allowedRoles.includes(currentUserRole)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-8">
         <div className="text-center">
-            <h1 className="text-3xl text-black font-bold mb-4">Access Denied</h1>
-            <p className="text-gray-600 mb-6">You must be an administrator to view this page.</p>
-            <Link href="/" className="text-blue-600 hover:underline">
-              Go back
-            </Link>
+          <h1 className="text-3xl text-black font-bold mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-6">You must be an administrator to view this page.</p>
+          <Link href="/" className="text-blue-600 hover:underline">
+            Go back
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center p-8 bg-gray-100 min-h-screen">
+    <div className="flex flex-col items-center justify-center bg-gray-100 min-h-screen">
       <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Create New User</h1>
-          <Link href="/dashboard" className="text-blue-600 hover:underline">
+          <Link href="/dashboard" className="py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
             Dashboard
           </Link>
         </div>
