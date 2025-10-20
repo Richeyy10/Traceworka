@@ -41,13 +41,17 @@ type FirestoreTimestamp = {
     toDate: () => Date;
 };
 
-// --- DATE FORMATTING HELPER FUNCTION (Unchanged) ---
-const formatFirestoreTimestamp = (timestamp: any): string => {
+// --- DATE FORMATTING HELPER FUNCTION (Type Fixed for ESLint/TS) ---
+// FIX 1: Use specific types for the timestamp parameter
+const formatFirestoreTimestamp = (timestamp: FirestoreTimestamp | string | null | undefined): string => {
     if (!timestamp) {
         return 'N/A';
     }
     
-    const date = (timestamp as FirestoreTimestamp).toDate ? (timestamp as FirestoreTimestamp).toDate() : new Date(timestamp);
+    // Safely determine if it's a Firestore Timestamp object or a simple string date
+    const date = typeof timestamp === 'object' && timestamp !== null && 'toDate' in timestamp 
+        ? (timestamp as FirestoreTimestamp).toDate()
+        : new Date(timestamp as string);
     
     if (isNaN(date.getTime())) {
         return 'Invalid Date';
@@ -64,7 +68,7 @@ const formatFirestoreTimestamp = (timestamp: any): string => {
 };
 // ----------------------------------------
 
-// Requisition Interface (Unchanged)
+// Requisition Interface (Type Fixed)
 interface Requisition {
     id: string;
     itemName: string;
@@ -76,10 +80,10 @@ interface Requisition {
     reason: string;
     status: 'Pending Supervisor Review' | 'Approved by Supervisor' | 'Pending Owner Review' | 'Approved' | 'Rejected by Supervisor' | 'Rejected by Owner' | 'Canceled';
     requesterEmail: string;
-    created: any; 
+    created: FirestoreTimestamp | string; // FIX 2: Use specific type
     rejectionReason?: string;
     
-    supervisorApprovedBy?: string; 
+    supervisorApprovedBy?: string;
     ownerApprovedBy?: string;
     rejectedBy?: string;
 }
@@ -91,7 +95,7 @@ export default function MyRequisitionsPage() {
     const { data: session, status } = useSession();
     const userRole = session?.user?.role || 'staff';
     const userDepartment = session?.user?.department || 'default';
-    const userEmail = session?.user?.email;
+    // const userEmail = session?.user?.email; // FIX 3: Variable removed as it was unused
 
     const isStaff = userRole === 'staff';
     const isSupervisor = userRole === 'supervisor';
@@ -282,12 +286,12 @@ export default function MyRequisitionsPage() {
                 </div>
             </div>
 
-            {/* --- Tab Navigation for Reviewers (Unchanged) --- */}
+            {/* --- Tab Navigation for Reviewers (Pagination Reset Added) --- */}
             {(isSupervisor) && (
                 <div className="flex border-b border-gray-300 mb-6">
-                    {/* Supervisor/Owner Action Queue Tab */}
+                    {/* Supervisor Action Queue Tab */}
                     <button
-                        onClick={() => setActiveView('action')}
+                        onClick={() => { setActiveView('action'); setCurrentPage(1); }} // Added setCurrentPage(1)
                         className={`px-4 py-2 font-semibold ${activeView === 'action' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         Action Queue ({isSupervisor ? 'Subordinates' : 'Pending'})
@@ -295,7 +299,7 @@ export default function MyRequisitionsPage() {
 
                     {/* Supervisor's Personal History Tab */}
                     <button
-                        onClick={() => setActiveView('my-submissions')}
+                        onClick={() => { setActiveView('my-submissions'); setCurrentPage(1); }} // Added setCurrentPage(1)
                         className={`px-4 py-2 font-semibold ${activeView === 'my-submissions' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         My Submissions
@@ -305,13 +309,13 @@ export default function MyRequisitionsPage() {
             {(isOwner) && (
                 <div className="flex border-b border-gray-300 mb-6">
                     <button
-                        onClick={() => setActiveView('action')}
+                        onClick={() => { setActiveView('action'); setCurrentPage(1); }} // Added setCurrentPage(1)
                         className={`px-4 py-2 font-semibold ${activeView === 'action' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         Action Queue ({isSupervisor ? 'Subordinates' : 'Pending'})
                     </button>
                     <button
-                        onClick={() => setActiveView('all')}
+                        onClick={() => { setActiveView('all'); setCurrentPage(1); }} // Added setCurrentPage(1)
                         className={`px-4 py-2 font-semibold ${activeView === 'all' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         Full History
@@ -365,8 +369,8 @@ export default function MyRequisitionsPage() {
                                 const isOwnSubmission = req.requesterEmail === userEmail; 
 
                                 const statusColor = req.status.includes('Approved') ? 'bg-green-100 text-green-800' :
-                                                    req.status.includes('Rejected') || req.status.includes('Canceled') ? 'bg-red-100 text-red-800' : 
-                                                    'bg-yellow-100 text-yellow-800';
+                                                     req.status.includes('Rejected') || req.status.includes('Canceled') ? 'bg-red-100 text-red-800' : 
+                                                     'bg-yellow-100 text-yellow-800';
                                 const dynamicStatusText = getDisplayStatus(req);
                                 
                                 return (

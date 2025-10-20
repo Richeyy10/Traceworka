@@ -1,154 +1,8 @@
-// import { NextResponse, NextRequest } from 'next/server';
-// import { initializeApp, cert, getApps } from 'firebase-admin/app';
-// import { getFirestore } from 'firebase-admin/firestore';
-// import { getServerSession } from "next-auth";
-// import { options } from '../../auth/[...nextauth]/options';
-// import { Resend } from 'resend';
-
-// // Initialize Resend
-// const resend = new Resend(process.env.RESEND_API_KEY);
-
-// // Initialize Firebase Admin SDK if it hasn't been already
-// if (!getApps().length) {
-//     try {
-//         const serviceAccountKey = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
-//         initializeApp({
-//             credential: cert(serviceAccountKey),
-//         });
-//     } catch (error) {
-//         console.error("Error initializing Firebase Admin SDK:", error);
-//     }
-// }
-
-// const db = getFirestore();
-
-// // Helper type for dynamic route context to satisfy the TypeScript compiler
-// type Context = {
-//     params: Promise<{
-//         id: string;
-//     }>;
-// };
-
-// // Handles PATCH requests (for updates like status)
-// export async function PATCH(request: NextRequest, context: Context) {
-//     try {
-//         const session = await getServerSession(options);
-//         const userRole = session?.user?.role;
-//         const userEmail = session?.user?.email;
-
-//         if (!userEmail) {
-//             return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-//         }
-
-//         const { id } = await context.params;
-//         const body = await request.json();
-
-//         const docRef = db.collection('requisitions').doc(id);
-//         const doc = await docRef.get();
-
-//         if (!doc.exists) {
-//             return NextResponse.json({ message: 'Requisition not found.' }, { status: 404 });
-//         }
-        
-//         const currentData = doc.data();
-        
-//         // Security Check for Canceled status: only the owner can cancel a pending requisition
-//         if (body.status === 'Canceled') {
-//             if (currentData?.requesterEmail !== userEmail) {
-//                 return NextResponse.json({ message: 'Forbidden. You can only cancel your own requisitions.' }, { status: 403 });
-//             }
-//             if (currentData?.status !== 'Pending') {
-//                 return NextResponse.json({ message: 'Only pending requisitions can be canceled.' }, { status: 400 });
-//             }
-//         }
-        
-//         // Security Check for Approved/Rejected status: only an admin can approve/reject
-//         if ((body.status === 'Approved' || body.status === 'Rejected') && userRole !== 'admin') {
-//             return NextResponse.json({ message: 'Forbidden. Only admins can approve or reject requisitions.' }, { status: 403 });
-//         }
-
-//         const updatedData = {
-//             ...body,
-//             lastUpdated: new Date(),
-//         };
-
-//         await docRef.update(updatedData);
-
-//         // --- Email Notification Logic ---
-//         let emailSubject = '';
-//         let emailMessage = '';
-        
-//         if (updatedData.status === 'Approved') {
-//             emailSubject = 'Requisition Approved';
-//             emailMessage = `Your requisition for ${currentData?.itemName} has been approved.`;
-//         } else if (updatedData.status === 'Rejected') {
-//             emailSubject = 'Requisition Rejected';
-//             emailMessage = `Your requisition for ${currentData?.itemName} has been rejected.`;
-//         } else if (updatedData.status === 'Canceled') {
-//             emailSubject = 'Requisition Canceled';
-//             emailMessage = `Your requisition for ${currentData?.itemName} has been canceled.`;
-//         }
-
-//         if (emailSubject && currentData?.requesterEmail) {
-//             try {
-//                 await resend.emails.send({
-//                     from: 'Requisition System <noreply@yourdomain.com>', // Replace with your domain
-//                     to: currentData.requesterEmail,
-//                     subject: emailSubject,
-//                     html: `<p>${emailMessage}</p>`,
-//                 });
-//             } catch (emailError) {
-//                 console.error('Failed to send email:', emailError);
-//             }
-//         }
-
-//         return NextResponse.json({ message: 'Requisition updated successfully' }, { status: 200 });
-//     } catch (error) {
-//         console.error('Failed to update requisition:', error);
-//         return NextResponse.json({ message: 'An unexpected error occurred.' }, { status: 500 });
-//     }
-// }
-
-// // Handles DELETE requests
-// export async function DELETE(request: NextRequest, context: Context) {
-//     try {
-//         const session = await getServerSession(options);
-//         const userRole = session?.user?.role;
-
-//         // Only allow admins to delete requisitions
-//         if (userRole !== 'admin') {
-//             return NextResponse.json({ message: 'Forbidden. You do not have permission to delete requisitions.' }, { status: 403 });
-//         }
-
-//         const { id } = await context.params;
-
-//         if (!id) {
-//             return NextResponse.json({ message: 'Requisition ID is required.' }, { status: 400 });
-//         }
-
-//         const docRef = db.collection('requisitions').doc(id);
-//         const doc = await docRef.get();
-
-//         if (!doc.exists) {
-//             return NextResponse.json({ message: 'Requisition not found.' }, { status: 404 });
-//         }
-
-//         await docRef.delete();
-
-//         return NextResponse.json({ message: 'Requisition deleted successfully.' }, { status: 200 });
-
-//     } catch (error) {
-//         console.error('Failed to delete requisition:', error);
-//         return NextResponse.json({ message: 'An unexpected error occurred.' }, { status: 500 });
-//     }
-// }
-
-
 import { NextResponse, NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { options } from '../../auth/[...nextauth]/options'; 
+import { options } from "../../auth/[...nextauth]/options";
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, FieldValue, Query } from 'firebase-admin/firestore'; // <-- NEW: Imported Query
+import { getFirestore, FieldValue, Query } from 'firebase-admin/firestore';
 import { Resend } from 'resend'; 
 
 // Initialize Firebase Admin SDK
@@ -181,19 +35,34 @@ interface RequisitionData {
     requesterEmail: string;
     department: string;
     status: string;
-    rejectionReason?: string;
-    quantity: number; // Added for cost calculation in email
-    unitCost: number; // Added for cost calculation in email
+    rejectionReason?: string; // Used when sending rejection email
+    quantity: number;
+    unitCost: number;
 }
 
-// --- NEW: Dynamic Reviewer Email Lookup Function ---
+// Interface to satisfy type checking for updateData
+interface RequisitionUpdate {
+    // FIX: ESLint disable comment to allow 'any' as it is required for 
+    // the Firestore SDK's generic type signature for update().
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any; // Index signature to satisfy Firestore SDK's generic type requirement for update()
+    status: string;
+    rejectionReason?: string | FieldValue;
+    rejectedBy?: string | FieldValue;
+    rejectedEmail?: string | FieldValue;
+    rejectedDate?: FieldValue;
+    canceledBy?: string | FieldValue;
+    canceledDate?: FieldValue;
+    supervisorApprovedBy?: string | FieldValue;
+    supervisorApprovedEmail?: string | FieldValue;
+    supervisorApprovedDate?: FieldValue;
+    ownerApprovedBy?: string | FieldValue;
+    ownerApprovedEmail?: string | FieldValue;
+    ownerApprovedDate?: FieldValue;
+}
 
-/**
- * Queries the 'users' collection to find the email of the required reviewer.
- * @param role The role to find ('supervisor' or 'owner').
- * @param department The department to filter by (required for supervisor).
- * @returns The reviewer's email address or null if not found.
- */
+
+// --- Dynamic Reviewer Email Lookup Function ---
 async function getReviewerEmail(role: 'supervisor' | 'owner', department?: string): Promise<string | null> {
     const usersRef = db.collection('users');
     let query: Query = usersRef.where('role', '==', role);
@@ -212,14 +81,8 @@ async function getReviewerEmail(role: 'supervisor' | 'owner', department?: strin
 }
 
 // --- RESEND EMAIL NOTIFICATION FUNCTION ---
-
-/**
- * Sends an email notification using the Resend SDK.
- */
 async function sendEmailNotification(reqData: RequisitionData, nextStatus: string) {
-    // IMPORTANT: Replace with your actual verified domain email
     const SENDER_EMAIL = 'no-reply@yourverifieddomain.com'; 
-    
     let toEmail = '';
     let subject = '';
     let htmlBody = '';
@@ -229,7 +92,6 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
     const dashboardLink = 'https://your-app-domain.com/my-requisitions'; 
 
     switch (nextStatus) {
-        // --- Staff Notifications (Final Statuses) ---
         case 'Approved':
             toEmail = reqData.requesterEmail;
             subject = `✅ APPROVED: ${reqData.itemName} is Ready for Fulfillment`;
@@ -247,9 +109,8 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
                         <p>View Details: <a href="${dashboardLink}">Click Here</a></p>`;
             break;
 
-        // --- Owner Notifications (Ready for Final Review) ---
         case 'Approved by Supervisor':
-            const ownerEmail = await getReviewerEmail('owner'); // Lookup Owner Email
+            const ownerEmail = await getReviewerEmail('owner'); 
             if (!ownerEmail) {
                 console.warn('WARNING: Owner email not found. Skipping notification.');
                 return;
@@ -267,7 +128,7 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
 
     if (toEmail) {
         try {
-            const { data, error } = await resend.emails.send({
+            const { error } = await resend.emails.send({
                 from: SENDER_EMAIL,
                 to: [toEmail],
                 subject: subject,
@@ -286,9 +147,17 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
 }
 
 // --- PATCH HANDLER (Updating Status) ---
-export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
+export async function PATCH(
+    req: NextRequest, 
+    // ESLint disable comment to allow 'any' as a necessary type workaround
+    // for Next.js App Router dynamic route type compatibility issues on Vercel build.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    context: any 
+): Promise<NextResponse<{ message: string }>> {
+
     const session = await getServerSession(options);
-    const { id } = context.params;
+    // Explicitly cast params to the correct type for use inside the function
+    const { id } = context.params as { id: string }; 
 
     if (!session || !session.user) {
         return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
@@ -311,9 +180,8 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
             return NextResponse.json({ message: 'Requisition not found.' }, { status: 404 });
         }
         
-        // Ensure we grab the existing data for email use
-        const currentData = doc.data() as RequisitionData; 
-        let updateData: any = { status };
+        const currentData = doc.data() as Omit<RequisitionData, 'id' | 'rejectionReason'>; 
+        const updateData: RequisitionUpdate = { status }; 
         
         // --- Auditing and data clearing logic ---
         if (status.includes('Approved')) {
@@ -376,7 +244,7 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
             ...currentData, 
             id: doc.id, 
             rejectionReason: rejectionReason 
-        }, status);
+        } as RequisitionData, status);
 
         return NextResponse.json({ message: `Requisition status updated to ${status}` });
 
