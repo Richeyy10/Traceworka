@@ -17,7 +17,7 @@ interface Requisition {
   quantity: number;
   department: string;
   requesterName: string;
-  employeeId: string;
+  branch: string;
   unitCost: number;
   reason: string;
   status: 'Pending' | 'Approved' | 'Rejected';
@@ -76,7 +76,7 @@ export default function RequisitionsTable() {
                   Department
                 </th>
                 <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employee ID
+                  Branch
                 </th>
                 <th scope="col" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -96,7 +96,7 @@ export default function RequisitionsTable() {
                   <td className="px-3 py-4 whitespace-nowrap text-sm">{req.reason}</td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm">{req.requesterName}</td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm">{req.department}</td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm">{req.employeeId}</td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm">{req.branch}</td>
                   <td className="px-3 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       req.status === 'Approved' ? 'bg-green-100 text-green-800' :

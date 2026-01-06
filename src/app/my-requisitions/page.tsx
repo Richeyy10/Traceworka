@@ -6,7 +6,7 @@ import { useSession, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import logo from '@/assets/logowithnobkg.png'
 import { useState, useMemo, useEffect } from 'react';
-import toast from 'react-hot-toast'; 
+import toast from 'react-hot-toast';
 // REMOVED: import { Timestamp } from 'firebase-admin/firestore'; // Removed server-side import
 
 // --- NEW INTERFACES FOR PAGINATION ---
@@ -33,7 +33,7 @@ const fetcher = async (url: string) => {
         return res.json();
     } catch (error) {
         console.error("SWR Fetch Error:", error);
-        throw error; 
+        throw error;
     }
 };
 
@@ -44,10 +44,10 @@ const formatFirestoreTimestamp = (dateString: string | null | undefined): string
     if (!dateString) {
         return 'N/A';
     }
-    
+
     // Create a Date object from the ISO date string
     const date = new Date(dateString);
-    
+
     if (isNaN(date.getTime())) {
         return 'Invalid Date';
     }
@@ -70,16 +70,16 @@ interface Requisition {
     quantity: number;
     department: string;
     requesterName: string;
-    employeeId: string;
+    branch: string;
     unitCost: number;
     reason: string;
     status: 'Pending Supervisor Review' | 'Approved by Supervisor' | 'Pending Owner Review' | 'Approved' | 'Rejected by Supervisor' | 'Rejected by Owner' | 'Canceled';
     requesterEmail: string;
     // 🎯 FIX: Explicitly set type to string (ISO date string from API)
-    created: string; 
+    created: string;
     rejectionReason?: string;
-    
-    supervisorApprovedBy?: string; 
+
+    supervisorApprovedBy?: string;
     ownerApprovedBy?: string;
     rejectedBy?: string;
 }
@@ -90,6 +90,7 @@ interface UserSession {
     role: string;
     department?: string;
     name: string;
+    branch: string;
 }
 
 // --- NEW Pagination Constants ---
@@ -101,7 +102,7 @@ const getDisplayStatus = (req: Requisition): string => {
 
     // Display 'Pending Owner Review' as 'Pending Admin Review'
     if (statusText === 'Pending Owner Review') {
-        return 'Pending Admin Review'; 
+        return 'Pending Admin Review';
     }
 
     if (statusText === 'Approved') {
@@ -120,10 +121,11 @@ export default function MyRequisitionsPage() {
     // Correctly accessing the session data and setting defaults
     const { data: session, status } = useSession();
     // Safely casting session.user to UserSession to ensure type safety in logic
-    const user = session?.user as (UserSession | undefined); 
-    
+    const user = session?.user as (UserSession | undefined);
+
     const userRole = user?.role || 'staff';
     const userDepartment = user?.department || 'default';
+    const userBranch = user?.branch || 'default';
     const userEmail = user?.email;
 
     const isStaff = userRole === 'staff';
@@ -167,26 +169,26 @@ export default function MyRequisitionsPage() {
     const [selectedRequisitionId, setSelectedRequisitionId] = useState<string | null>(null);
 
     const handleAction = async (id: string, newStatus: Requisition['status'], reason: string = '') => {
-        const actionName = newStatus.includes('Approved') ? 'Approval' : 
-                         newStatus.includes('Rejected') ? 'Rejection' : 'Cancellation';
-                         
+        const actionName = newStatus.includes('Approved') ? 'Approval' :
+            newStatus.includes('Rejected') ? 'Rejection' : 'Cancellation';
+
         const loadingToastId = toast.loading(`${actionName} in progress...`);
 
         try {
             const response = await fetch(`/api/requisitions/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    status: newStatus, 
+                body: JSON.stringify({
+                    status: newStatus,
                     rejectionReason: reason,
-                    performedBy: user?.name || user?.email 
+                    performedBy: user?.name || user?.email
                 }),
             });
 
             if (response.ok) {
                 toast.success(`Requisition successfully ${actionName.toLowerCase()}!`, { id: loadingToastId });
                 mutate();
-                
+
                 setShowReasonModal(false);
                 setRejectionReason('');
                 setSelectedRequisitionId(null);
@@ -206,11 +208,11 @@ export default function MyRequisitionsPage() {
         if (userRole === 'supervisor') {
             nextStatus = 'Approved by Supervisor';
         } else if (userRole === 'owner') {
-            nextStatus = 'Approved'; 
+            nextStatus = 'Approved';
         } else {
             return;
         }
-        
+
         handleAction(id, nextStatus);
     };
 
@@ -233,7 +235,7 @@ export default function MyRequisitionsPage() {
         } else {
             return;
         }
-        
+
         if (selectedRequisitionId) {
             handleAction(selectedRequisitionId, nextStatus, rejectionReason);
         }
@@ -242,7 +244,7 @@ export default function MyRequisitionsPage() {
     const handleCancel = (id: string) => {
         if (window.confirm('Are you sure you want to cancel this requisition? This cannot be undone.')) {
             handleAction(id, 'Canceled');
-        } 
+        }
     };
 
     // --- Loading and Auth Checks ---
@@ -262,14 +264,15 @@ export default function MyRequisitionsPage() {
             </div>
         );
     }
-        
-    const dashboardTitle = isStaff ? "My Requisitions" : 
-                            isSupervisor ? `Supervisor Dashboard (${userDepartment})` :
-                            "Owner Dashboard";
 
-    const tableHeaderTitle = (activeView === 'action' ? 'Action Queue' : 
-                             activeView === 'my-submissions' ? 'My Submissions' : 
-                             'All Requisitions');
+    const dashboardTitle = isStaff ? "My Requisitions" :
+        isSupervisor ? `Supervisor Dashboard (${userDepartment})` :
+            "Owner Dashboard";
+
+    const tableHeaderTitle = (activeView === 'action' ? 'Action Queue' :
+        activeView === 'reviewed' ? 'Reviewed Requisitions' :
+            activeView === 'my-submissions' ? 'My Submissions' :
+                'All Requisitions');
 
     return (
         <div className="mx-auto p-4 sm:p-8 bg-gray-100 min-h-screen text-black">
@@ -303,6 +306,16 @@ export default function MyRequisitionsPage() {
                         Action Queue
                     </button>
 
+                    {/*Reviewed Tabs*/}
+                    {isSupervisor && (
+                        <button
+                            onClick={() => setActiveView('reviewed')}
+                            className={`px-4 py-2 font-semibold ${activeView === 'reviewed' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Reviewed
+                        </button>
+                    )}
+
                     {/* My Submissions Tab (For Supervisors) / Full History (For Owners) */}
                     <button
                         onClick={() => setActiveView(isSupervisor ? 'my-submissions' : 'all')}
@@ -312,7 +325,7 @@ export default function MyRequisitionsPage() {
                     </button>
                 </div>
             )}
-            
+
             <h2 className="text-xl font-bold mb-4 text-gray-700">{tableHeaderTitle}</h2>
 
             {/* --- Table --- */}
@@ -347,20 +360,25 @@ export default function MyRequisitionsPage() {
                         {/* Table Body */}
                         <tbody className="bg-white divide-y divide-gray-200 text-black">
                             {myRequisitions.map((req) => {
-                                const needsSupervisorAction = isSupervisor && activeView === 'action' && req.status === 'Pending Supervisor Review';
+                                const isAdminSupervisor = isSupervisor && userDepartment === 'Admin';
+                                const needsSupervisorAction =
+                                    isSupervisor &&
+                                    activeView === 'action' &&
+                                    req.status === 'Pending Supervisor Review' &&
+                                    (req.department === userDepartment || isAdminSupervisor);
                                 // The Owner's action queue should include requests that skip the supervisor (like supervisor's own requests)
-                                const needsOwnerAction = isOwner && activeView === 'action' && (req.status === 'Approved by Supervisor' || req.status === 'Pending Owner Review' );
-                                
+                                const needsOwnerAction = isOwner && activeView === 'action' && (req.status === 'Approved by Supervisor' || req.status === 'Pending Owner Review');
+
                                 const canStaffCancel = isStaff && req.status.includes('Pending');
-                                
+
                                 // CRITICAL NEW CHECK: Does the requisition belong to the current user?
-                                const isOwnSubmission = req.requesterEmail === userEmail; 
+                                const isOwnSubmission = req.requesterEmail === userEmail;
 
                                 const statusColor = req.status.includes('Approved') ? 'bg-green-100 text-green-800' :
-                                                    req.status.includes('Rejected') || req.status.includes('Canceled') ? 'bg-red-100 text-red-800' : 
-                                                    'bg-yellow-100 text-yellow-800';
+                                    req.status.includes('Rejected') || req.status.includes('Canceled') ? 'bg-red-100 text-red-800' :
+                                        'bg-yellow-100 text-yellow-800';
                                 const dynamicStatusText = getDisplayStatus(req);
-                                
+
                                 return (
                                     <tr key={req.id}>
                                         {(!isStaff || activeView !== 'my-submissions') && (
@@ -376,25 +394,25 @@ export default function MyRequisitionsPage() {
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}`}>
                                                 {dynamicStatusText}
                                             </span>
-                                            
+
                                             {(req.status.includes('Rejected')) && req.rejectionReason && (
                                                 <p className="text-xs text-red-600 mt-1 italic max-w-xs truncate" title={req.rejectionReason}>
                                                     Reason: {req.rejectionReason}
                                                 </p>
                                             )}
                                         </td>
-                                        
+
                                         <td className="px-3 py-4 whitespace-nowrap text-sm">
-                                            {formatFirestoreTimestamp(req.created)} 
+                                            {formatFirestoreTimestamp(req.created)}
                                         </td>
-                                        
+
                                         <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                             {canStaffCancel && (
                                                 <button onClick={() => handleCancel(req.id)} className="text-red-600 hover:text-red-900">
                                                     Cancel
                                                 </button>
                                             )}
-                                            
+
                                             {/* Action buttons show only if action is needed AND it's NOT the user's own submission */}
                                             {((needsSupervisorAction || needsOwnerAction) && !isOwnSubmission) && (
                                                 <>
@@ -418,7 +436,7 @@ export default function MyRequisitionsPage() {
                     </div>
                 )}
             </div>
-            
+
             {/* --- Pagination Controls (Unchanged) --- */}
             {myRequisitions.length > 0 && (
                 <div className="flex justify-between items-center mt-4 px-4 py-2 bg-white rounded-lg shadow">
@@ -429,7 +447,7 @@ export default function MyRequisitionsPage() {
                     >
                         &larr; Previous
                     </button>
-                    
+
                     <span className="text-sm text-gray-700">
                         Page <span className="font-semibold">{meta.currentPage}</span>
                     </span>
@@ -443,7 +461,7 @@ export default function MyRequisitionsPage() {
                     </button>
                 </div>
             )}
-            
+
             {/* --- Rejection Reason Modal (Unchanged) --- */}
             {showReasonModal && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">

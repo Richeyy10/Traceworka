@@ -72,19 +72,19 @@ export default function HomeDashboard() {
           <div className="flex space-x-6">
 
             <Link href="/my-requisitions" passHref>
-              <div className="bg-white p-8 rounded-lg shadow-xl hover:shadow-2xl transition duration-300 w-80 cursor-pointer text-center border-t-4 border-blue-500">
+              <div className="flex flex-col bg-white p-8 rounded-lg shadow-xl hover:shadow-2xl transition duration-300 h-[200px] w-80 cursor-pointer justify-center items-center text-center border-t-4 border-blue-500">
                 <h2 className="text-xl text-black font-semibold mb-2">My Requisitions</h2>
               </div>
             </Link>
 
             <Link href="/create-requisition" passHref>
-              <div className="bg-white p-8 rounded-lg shadow-xl hover:shadow-2xl transition duration-300 w-80 cursor-pointer text-center border-t-4 border-green-500">
+              <div className="flex flex-col bg-white p-8 rounded-lg shadow-xl hover:shadow-2xl transition duration-300 h-[200px] w-80 cursor-pointer justify-center items-center text-center border-t-4 border-green-500">
                 <h2 className="text-xl text-black font-semibold mb-2">Create New Requisition</h2>
               </div>
             </Link>
             {userRole === 'supervisor' && (
               <Link href="/admin" passHref>
-              <div className="bg-white p-8 rounded-lg shadow-xl hover:shadow-2xl transition duration-300 w-80 cursor-pointer text-center border-t-4 border-blue-500">
+              <div className="flex flex-col bg-white p-8 rounded-lg shadow-xl hover:shadow-2xl transition duration-300 w-80 h-[200px] cursor-pointer justify-center items-center text-center border-t-4 border-blue-500">
                 <h2 className="text-xl text-black font-semibold mb-2">Create New User</h2>
               </div>
             </Link>

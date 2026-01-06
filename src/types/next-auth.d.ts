@@ -14,8 +14,8 @@ declare module "next-auth" {
       role: string;
       /** The user's department or branch. */
       department: string;
-      /** The user's employee ID. (FIXED) */
-      employeeId: string; // <-- ADDED THIS LINE
+      /** The user's branch. */
+      branch: string; // <-- ADDED THIS LINE
     } & DefaultSession["user"];
   }
 
@@ -25,7 +25,7 @@ declare module "next-auth" {
   interface User {
     role: string;
     department: string;
-    employeeId: string; // <-- ADDED THIS LINE
+    branch: string; // <-- ADDED THIS LINE
   }
 } 
 
@@ -34,6 +34,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     role: string;
     department: string;
-    employeeId: string; // <-- ADDED THIS LINE
+    branch: string; // <-- ADDED THIS LINE
   }
 }

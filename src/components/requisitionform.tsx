@@ -20,12 +20,13 @@ export default function RequisitionForm({ requesterName }: RequisitionFormProps)
   
   // 1. Get user details from the session
   const userDepartment = (session?.user?.department as string) || '';
+  const userBranch = (session?.user?.branch as string) || '';
   const userRole = session?.user?.role; // Get the user role
   const userEmail = session?.user?.email;
 
   const [formData, setFormData] = useState({
     requesterName: requesterName,
-    employeeId: '',
+    userBranch: userBranch,
     itemName: '',
     quantity: 0,
     unitCost: 0,
@@ -86,7 +87,7 @@ export default function RequisitionForm({ requesterName }: RequisitionFormProps)
         requesterName: formData.requesterName,
         requesterEmail: userEmail,
         department: userDepartment, 
-        employeeId: formData.employeeId,
+        branch: formData.userBranch,
         itemName: formData.itemName,
         quantity: Number(formData.quantity),
         unitCost: Number(formData.unitCost),
@@ -113,7 +114,7 @@ export default function RequisitionForm({ requesterName }: RequisitionFormProps)
         setFormData(prevData => ({
           ...prevData,
           requesterName: requesterName,
-          employeeId: '',
+          branch: userBranch,
           itemName: '',
           quantity: 0,
           unitCost: 0,
@@ -168,12 +169,12 @@ export default function RequisitionForm({ requesterName }: RequisitionFormProps)
                 </div>
               </div>
               <InputField
-                label="Employee ID"
-                name="employeeId"
-                value={formData.employeeId}
+                label="Branch"
+                name="userBranch"
+                value={formData.userBranch}
                 onChange={handleInputChange}
-                placeholder="e.g., 12345"
-                required
+                placeholder="e.g., Abuja"
+                readOnly
               />
             </div>
           </div>

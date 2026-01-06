@@ -69,7 +69,7 @@ export const options: NextAuthOptions = {
                         role: userData.role,
                         department: userData.department,
                         // === NEW LINE ADDED HERE ===
-                        employeeId: userData.employeeId || userDoc.id, // Ensure you retrieve this field
+                        branch: userData.branch, // Ensure you retrieve this field
                     };
                 } catch (error) {
                     console.error("Authorization error:", error);
@@ -85,7 +85,7 @@ export const options: NextAuthOptions = {
                 token.role = user.role;
                 token.department = user.department;
                 // === NEW LINE ADDED HERE ===
-                token.employeeId = user.employeeId; 
+                token.branch = user.branch; 
             }
             return token;
         },
@@ -95,7 +95,7 @@ export const options: NextAuthOptions = {
                 session.user.role = token.role as string;
                 session.user.department = token.department as string;
                 // === NEW LINE ADDED HERE ===
-                session.user.employeeId = token.employeeId as string;
+                session.user.branch = token.branch as string;
             }
             console.log("Session object:", session);
             return session;

@@ -149,15 +149,19 @@ async function sendEmailNotification(reqData: RequisitionData, nextStatus: strin
 // --- PATCH HANDLER (Updating Status) ---
 export async function PATCH(
     req: NextRequest, 
-    // ESLint disable comment to allow 'any' as a necessary type workaround
-    // for Next.js App Router dynamic route type compatibility issues on Vercel build.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    context: any 
+    // In Next.js 15, params is a Promise
+    context: { params: Promise<{ id: string }> } 
 ): Promise<NextResponse<{ message: string }>> {
 
     const session = await getServerSession(options);
-    // Explicitly cast params to the correct type for use inside the function
-    const { id } = context.params as { id: string }; 
+    
+    // 1. Await the params before destructuring
+    const { id } = await context.params; 
+
+    // 2. Safety check: Ensure id exists before calling Firestore
+    if (!id) {
+        return NextResponse.json({ message: 'Invalid or missing ID.' }, { status: 400 });
+    }
 
     if (!session || !session.user) {
         return NextResponse.json({ message: 'Authentication required.' }, { status: 401 });
@@ -173,6 +177,7 @@ export async function PATCH(
     const now = FieldValue.serverTimestamp();
 
     try {
+        // Now 'id' is a string, preventing the "documentPath" error
         const docRef = db.collection('requisitions').doc(id);
         const doc = await docRef.get();
 
@@ -234,12 +239,11 @@ export async function PATCH(
             updateData.ownerApprovedEmail = FieldValue.delete();
             updateData.ownerApprovedDate = FieldValue.delete();
         }
-        // --- End of Auditing Logic ---
         
         // 2. Perform the update
         await docRef.update(updateData);
         
-        // 3. Send Notification AFTER successful update
+        // 3. Send Notification
         await sendEmailNotification({ 
             ...currentData, 
             id: doc.id, 
