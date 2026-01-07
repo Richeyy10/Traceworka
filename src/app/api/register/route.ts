@@ -15,7 +15,7 @@ const db = getFirestore();
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, department, branch, password } = await request.json();
 
     if (!name || !email || !password) {
       return NextResponse.json({ message: 'All fields are required.' }, { status: 400 });
@@ -36,8 +36,10 @@ export async function POST(request: NextRequest) {
     const newUser = {
       name,
       email,
+      department,
+      branch,
       password: hashedPassword,
-      role: 'user', // Default role for new sign-ups
+      role: 'staff', // Default role for new sign-ups
     };
 
     // Save the new user to Firestore

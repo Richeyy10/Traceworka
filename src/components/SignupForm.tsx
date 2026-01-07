@@ -9,6 +9,8 @@ export default function SignupForm() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    department: '',
+    branch: '',
     password: '',
   });
 
@@ -54,7 +56,7 @@ export default function SignupForm() {
   };
 
   return (
-    <div className="flex justify-center p-8 bg-gray-100 min-h-screen">
+    <div className="flex flex-col items-center justify-center p-8 bg-gray-100 min-h-screen">
       <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
         <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">
           Sign Up
@@ -78,6 +80,24 @@ export default function SignupForm() {
             value={formData.email}
             onChange={handleInputChange}
             placeholder="e.g., john.doe@company.com"
+            required
+          />
+          <InputField
+            label="Department"
+            name="department"
+            type="text"
+            value={formData.department}
+            onChange={handleInputChange}
+            placeholder="e.g., Engineering, Sales, HR"
+            required
+          />
+          <InputField
+            label="Branch"
+            name="branch"
+            type="text"
+            value={formData.branch}
+            onChange={handleInputChange}
+            placeholder="e.g., Ibadan, Abuja, Lagos"
             required
           />
           <InputField

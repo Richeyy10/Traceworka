@@ -29,13 +29,13 @@ export async function POST(request: NextRequest) {
     const userSnapshot = await userRef.where('email', '==', userEmail).limit(1).get();
     const userData = userSnapshot.docs[0]?.data();
 
-    if (userData?.role !== 'admin') {
+    if (userData?.role !== 'supervisor' && userData?.role !== 'admin' && userData?.role !== 'owner') {
       return NextResponse.json({ message: 'Forbidden. Must be an admin.' }, { status: 403 });
     }
 
-    const { name, email, password, role } = await request.json();
+    const { name, email, department, branch, password, role } = await request.json();
 
-    if (!name || !email || !password || !role) {
+    if (!name || !email || !department || !branch || !password || !role) {
       return NextResponse.json({ message: 'All fields are required.' }, { status: 400 });
     }
 
@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
     const newUser = {
       name,
       email,
+      department,
+      branch,
       password: hashedPassword,
       role,
     };

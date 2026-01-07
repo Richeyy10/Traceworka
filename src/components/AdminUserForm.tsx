@@ -6,6 +6,8 @@ export default function AdminUserForm() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    department: '',
+    branch: '',
     password: '',
     role: 'user',
   });
@@ -39,7 +41,7 @@ export default function AdminUserForm() {
 
       if (response.ok) {
         setMessage('User created successfully!');
-        setFormData({ name: '', email: '', password: '', role: 'user' });
+        setFormData({ name: '', email: '', department: '', branch: '', password: '', role: 'user' });
       } else {
         setError(data.message || 'Failed to create user.');
       }
@@ -73,6 +75,24 @@ export default function AdminUserForm() {
           required
         />
         <InputField
+          label="Department"
+          name="department"
+          type="text"
+          value={formData.department}
+          onChange={handleInputChange}
+          placeholder="e.g., Engineering, Sales, HR"
+          required
+        />
+        <InputField
+          label="Branch"
+          name="branch"
+          type="text"
+          value={formData.branch}
+          onChange={handleInputChange}
+          placeholder="e.g., Ibadan, Abuja, Lagos"
+          required
+        />
+        <InputField
           label="Password"
           name="password"
           type="password"
@@ -90,8 +110,8 @@ export default function AdminUserForm() {
             onChange={handleInputChange}
             className="mt-1 block w-full pl-3 pr-10 py-2 text-base text-black border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
           >
-            <option value="user">Staff</option>
-            <option value="admin">Supervisor</option>
+            <option value="staff">Staff</option>
+            <option value="supervisor">Supervisor</option>
           </select>
         </div>
         <div>
